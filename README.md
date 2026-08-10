@@ -31,19 +31,34 @@ El build genera `dist/` desplegable en cualquier hosting estático.
 URL prevista: [https://juliojulioso.github.io/metaverso-mvp/](https://juliojulioso.github.io/metaverso-mvp/)  
 Repo: [github.com/JulioJulioso/metaverso-mvp](https://github.com/JulioJulioso/metaverso-mvp)
 
-### GitHub Pages (recomendado)
+### GitHub Pages
 
-1. Primer push del código a `main` (tú haces commit/push; el agente no).
-2. En el repo: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. Cada push a `main` ejecuta `.github/workflows/deploy-pages.yml` (`npm ci` + `npm run build` + deploy de `dist/`).
-4. Comparte la URL HTTPS con tu equipo o embébela en tu CMS (iframe/URL embebida).
+**Importante:** no publiques la rama `main` desde la **raíz del repo**. Eso sirve el `index.html` de desarrollo y el navegador pide `/src/main.js` → pantalla blanca (MIME `text/html` por 404).
+
+Debes servir el **build de producción** (`docs/` tras `npm run build:pages`).
+
+1. Genera el sitio:
+
+```bash
+npm run build:pages
+```
+
+2. Commit y push de la carpeta `docs/` (tú; el agente no hace commit/push).
+3. En GitHub: **Settings → Pages → Build and deployment**
+   - **Source:** Deploy from a branch  
+   - **Branch:** `main`  
+   - **Folder:** `/docs`  
+4. Espera 1–2 min y abre:  
+   **https://juliojulioso.github.io/metaverso-mvp/**
+
+Si F12 pide `https://juliojulioso.github.io/src/main.js`, Pages sigue en la raíz sin build: repite los pasos y fuerza un hard refresh (Ctrl+F5).
 
 Local con la base de Pages:
 
 ```bash
 npm run dev
-# o tras build:
-npx vite preview --base /metaverso-mvp/
+npm run build:pages
+npx vite preview --outDir docs --base /metaverso-mvp/
 ```
 
 ## Controles
