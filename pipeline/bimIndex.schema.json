@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metaverso-sinestesia.local/schemas/bim-index.json",
+  "title": "BimIndex",
+  "description": "Sidecar BIM para GLB de runtime. Unidades de cota en mm; mallas del GLB en metros rebased.",
+  "type": "object",
+  "required": ["version", "units", "origin", "elements"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "units": {
+      "type": "object",
+      "properties": {
+        "geometry": { "const": "m" },
+        "properties": { "const": "mm" }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "description": "Punto restado al exportar (metros, CRS del proyecto o survey).",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" },
+        "sourceCrs": { "type": "string" }
+      }
+    },
+    "projectBasePoint": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["globalId", "category"],
+        "properties": {
+          "globalId": { "type": "string" },
+          "expressId": { "type": ["integer", "null"] },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "level": { "type": "string" },
+          "meshName": { "type": "string", "description": "Nombre del nodo/mesh en el GLB" },
+          "bounds": {
+            "type": "object",
+            "description": "AABB en metros, espacio rebased del GLB",
+            "properties": {
+              "min": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "max": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3
+              }
+            }
+          },
+          "properties": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Parámetros BIM; cotas preferiblemente en mm"
+          }
+        }
+      }
+    }
+  }
+}

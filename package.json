@@ -1,0 +1,19 @@
+{
+  "name": "metaverso-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MVP metaverso arquitectónico en navegador (Babylon.js + WebXR), AEC-ready",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^8.0.0",
+    "@babylonjs/loaders": "^8.0.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}
