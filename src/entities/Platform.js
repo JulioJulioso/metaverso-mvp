@@ -1,13 +1,20 @@
-import { MeshBuilder, StandardMaterial, Color3, Vector3 } from '@babylonjs/core';
+import {
+  MeshBuilder,
+  PBRMaterial,
+  Color3,
+  Vector3,
+} from '@babylonjs/core';
 
 export class Platform {
   /**
    * @param {import('@babylonjs/core').Scene} scene
-   * @param {{ id: string, position: {x:number,y:number,z:number}, size: {x:number,y:number,z:number}, color?: {r:number,g:number,b:number} }} def
+   * @param {object} def
+   * @param {import('@babylonjs/core').ShadowGenerator|null} [shadowGen]
    */
-  constructor(scene, def) {
+  constructor(scene, def, shadowGen = null) {
     this.id = def.id;
     this.size = def.size;
+    this.requiresJump = !!def.requiresJump;
 
     this.mesh = MeshBuilder.CreateBox(
       def.id,
@@ -20,20 +27,26 @@ export class Platform {
       def.position.z
     );
 
-    const c = def.color ?? { r: 0.5, g: 0.5, b: 0.55 };
-    const mat = new StandardMaterial(`${def.id}-mat`, scene);
-    mat.diffuseColor = new Color3(c.r, c.g, c.b);
-    mat.specularColor = new Color3(0.08, 0.08, 0.08);
+    const c = def.albedo ?? def.color ?? { r: 0.4, g: 0.39, b: 0.38 };
+    const mat = new PBRMaterial(`${def.id}-mat`, scene);
+    mat.albedoColor = new Color3(c.r, c.g, c.b);
+    mat.metallic = 0.08;
+    mat.roughness = 0.78;
+    mat.environmentIntensity = 0.85;
     this.mesh.material = mat;
+    this.mesh.receiveShadows = true;
     this.mesh.isPickable = true;
     this.mesh.metadata = {
       bimId: def.id,
-      label: `Plataforma ${def.id}`,
+      label: def.requiresJump
+        ? `Plataforma alta (requiere salto)`
+        : `Plataforma ${def.id}`,
       entity: 'platform',
     };
+
+    if (shadowGen) shadowGen.addShadowCaster(this.mesh);
   }
 
-  /** Data used by CollisionSystem.getGroundHeightAt */
   getCollisionData() {
     const p = this.mesh.position;
     const s = this.size;
@@ -43,6 +56,7 @@ export class Platform {
       minZ: p.z - s.z / 2,
       maxZ: p.z + s.z / 2,
       topY: p.y + s.y / 2,
+      requiresJump: this.requiresJump,
     };
   }
 

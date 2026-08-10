@@ -1,21 +1,30 @@
 /**
- * Keyboard input for desktop. Exposes normalized move + edge-triggered actions.
- * In XR, Player/main should prefer XRController.getMoveState() instead.
+ * Keyboard input: WASD, Space=jump, E=interact, F=drop, X=explode walls.
  */
 export class InputController {
   constructor() {
     this._keys = new Set();
     this._interactPressed = false;
     this._dropPressed = false;
+    this._jumpPressed = false;
+    this._explodePressed = false;
 
     this._onKeyDown = (e) => {
       this._keys.add(e.code);
-      if (e.code === 'KeyE' || e.code === 'Space') {
+      if (e.code === 'KeyE') {
         if (!e.repeat) this._interactPressed = true;
+        e.preventDefault();
+      }
+      if (e.code === 'Space') {
+        if (!e.repeat) this._jumpPressed = true;
         e.preventDefault();
       }
       if (e.code === 'KeyF') {
         if (!e.repeat) this._dropPressed = true;
+        e.preventDefault();
+      }
+      if (e.code === 'KeyX') {
+        if (!e.repeat) this._explodePressed = true;
         e.preventDefault();
       }
     };
@@ -28,10 +37,6 @@ export class InputController {
     window.addEventListener('keyup', this._onKeyUp);
   }
 
-  /**
-   * Continuous axes + edge flags for actions.
-   * Call once per frame; edges are consumed.
-   */
   getState() {
     const forward =
       this._keys.has('KeyW') || this._keys.has('ArrowUp');
@@ -44,10 +49,14 @@ export class InputController {
 
     const interact = this._interactPressed;
     const drop = this._dropPressed;
+    const jump = this._jumpPressed;
+    const explode = this._explodePressed;
     this._interactPressed = false;
     this._dropPressed = false;
+    this._jumpPressed = false;
+    this._explodePressed = false;
 
-    return { forward, backward, left, right, interact, drop };
+    return { forward, backward, left, right, interact, drop, jump, explode };
   }
 
   dispose() {

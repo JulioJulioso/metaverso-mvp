@@ -2,11 +2,6 @@
  * Lightweight proximity / ground helpers (no full physics engine).
  */
 
-/**
- * @param {{ x: number, y: number, z: number }|import('@babylonjs/core').Vector3} a
- * @param {{ x: number, y: number, z: number }|import('@babylonjs/core').Vector3} b
- * @param {number} radius meters
- */
 export function isNear(a, b, radius) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -14,9 +9,6 @@ export function isNear(a, b, radius) {
   return dx * dx + dy * dy + dz * dz <= radius * radius;
 }
 
-/**
- * Horizontal proximity (XZ), useful for pickups on floor.
- */
 export function isNearXZ(a, b, radius) {
   const dx = a.x - b.x;
   const dz = a.z - b.z;
@@ -24,27 +16,55 @@ export function isNearXZ(a, b, radius) {
 }
 
 /**
- * Highest platform top under the player XZ, else base ground Y.
+ * Highest reachable ground under the player.
+ * Platforms much higher than feet require a jump (they are ignored until feet rise close enough).
+ *
  * @param {{ x: number, z: number }} playerPosition
  * @param {Array<{ minX:number, maxX:number, minZ:number, maxZ:number, topY:number }>} platforms
  * @param {number} baseY
- * @param {number} [margin]
+ * @param {{ feetY: number, maxStepHeight?: number, margin?: number, airborne?: boolean }} opts
  */
-export function getGroundHeightAt(playerPosition, platforms, baseY = 0, margin = 0.05) {
+export function getGroundHeightAt(playerPosition, platforms, baseY = 0, opts = {}) {
+  const margin = opts.margin ?? 0.06;
+  const feetY = opts.feetY ?? baseY;
+  const maxStep = opts.maxStepHeight ?? 0.42;
+  const airborne = opts.airborne ?? false;
+
   let best = baseY;
   const x = playerPosition.x;
   const z = playerPosition.z;
 
   for (const p of platforms) {
     if (
-      x >= p.minX - margin &&
-      x <= p.maxX + margin &&
-      z >= p.minZ - margin &&
-      z <= p.maxZ + margin
+      x < p.minX - margin ||
+      x > p.maxX + margin ||
+      z < p.minZ - margin ||
+      z > p.maxZ + margin
     ) {
-      if (p.topY > best) best = p.topY;
+      continue;
+    }
+
+    const top = p.topY;
+    const rise = top - feetY;
+
+    // Already on / slightly above top → can stand
+    if (feetY >= top - 0.18) {
+      if (top > best) best = top;
+      continue;
+    }
+
+    // Walk up only small ledges
+    if (!airborne && rise > 0 && rise <= maxStep) {
+      if (top > best) best = top;
+      continue;
+    }
+
+    // Landing from a jump/fall: feet must come down onto the top surface
+    if (airborne && rise >= -0.05 && rise <= 0.55) {
+      if (top > best) best = top;
     }
   }
+
   return best;
 }
 

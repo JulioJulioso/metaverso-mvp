@@ -6,15 +6,18 @@ import { Player } from './entities/Player.js';
 import { Coin } from './entities/Coin.js';
 import { PickupSphere } from './entities/PickupSphere.js';
 import { Platform } from './entities/Platform.js';
+import { WallAssembly } from './entities/WallAssembly.js';
+import { DeliveryZone } from './entities/DeliveryZone.js';
+import { MediaScreen } from './entities/MediaScreen.js';
 import { InteractionSystem } from './systems/InteractionSystem.js';
 import { AchievementSystem } from './systems/AchievementSystem.js';
+import { CircuitSystem } from './systems/CircuitSystem.js';
 import { CameraRigSystem } from './systems/CameraRigSystem.js';
 import { BimIndexStub } from './systems/BimIndexStub.js';
 import { PickingSystem } from './systems/PickingSystem.js';
 import { NetworkStub } from './systems/NetworkStub.js';
 import { HUD } from './ui/HUD.js';
 
-// Register glTF loaders for future AssetLoader use
 import '@babylonjs/loaders/glTF';
 
 async function boot() {
@@ -25,7 +28,6 @@ async function boot() {
     return;
   }
 
-  // Presence stub imported so future systems can couple to the same interface
   void NetworkStub;
 
   const sceneManager = new SceneManager(canvas, {
@@ -33,30 +35,49 @@ async function boot() {
   });
   const scene = sceneManager.getScene();
   const camera = sceneManager.getCamera();
+  const shadowGen = sceneManager.getShadowGenerator();
 
   const input = new InputController();
   const xr = new XRController(scene);
   await xr.init();
 
-  const platforms = levelConfig.platforms.map((p) => new Platform(scene, p));
-  const coins = levelConfig.coins.map((c) => new Coin(scene, c));
-  const sphere = new PickupSphere(scene, levelConfig.pickupSphere);
+  const platforms = levelConfig.platforms.map(
+    (p) => new Platform(scene, p, shadowGen)
+  );
+  const coins = levelConfig.coins.map((c) => new Coin(scene, c, shadowGen));
+  const sphere = new PickupSphere(scene, levelConfig.pickupSphere, shadowGen);
+  const walls = new WallAssembly(scene, levelConfig.walls, shadowGen);
+  const zones = levelConfig.deliveryZones.map((z) => new DeliveryZone(scene, z));
+  const media = new MediaScreen(scene, levelConfig.video);
+
   const player = new Player(
     scene,
     levelConfig.player,
     platforms,
-    levelConfig.groundY
+    levelConfig.groundY,
+    shadowGen
   );
 
-  const achievements = new AchievementSystem(coins.length);
+  const circuit = new CircuitSystem(levelConfig.circuitSteps);
+  const achievements = new AchievementSystem(coins.length, {
+    onAllCollected: () => {
+      circuit.complete('coins_all', '¡Todos los marcadores recogidos!');
+    },
+  });
+
   const interactions = new InteractionSystem();
   const cameraRig = new CameraRigSystem(camera);
+
   const bimIndex = new BimIndexStub();
   bimIndex.loadMock(levelConfig.bimMockElements);
 
-  const hud = new HUD(hudRoot);
+  const hud = new HUD(hudRoot, {
+    youtubeEmbedUrl: media.getEmbedUrl(),
+    videoTitle: levelConfig.video.title,
+  });
   hud.updateCoins(achievements.getState());
   achievements.onChange((state) => hud.updateCoins(state));
+  circuit.onChange((snap) => hud.updateCircuit(snap));
 
   xr.onSessionChange((active) => {
     cameraRig.setEnabled(!active);
@@ -83,10 +104,13 @@ async function boot() {
     enabled: () => !sphere.isHeld(),
     onInteract: () => {
       if (player.pickUp(sphere)) {
-        hud.showMessage('Objeto recogido (E/F o trigger XR)');
+        hud.showMessage('Pelota recogida — llévala a los sitios de entrega (F soltar)');
       }
     },
   });
+
+  /** Next required delivery zone index (only after coins complete). */
+  let nextZoneIndex = 0;
 
   new PickingSystem(scene, camera, canvas, bimIndex, (info) => {
     if (!info?.element) return;
@@ -104,7 +128,6 @@ async function boot() {
     );
   });
 
-  /** Merge desktop axes with action edges; in XR movement from stick, E still from keyboard. */
   function resolveInput() {
     const desktop = input.getState();
     if (xr.isInXR) {
@@ -116,29 +139,71 @@ async function boot() {
         right: xrMove.right,
         interact: xrMove.interact || desktop.interact,
         drop: desktop.drop,
+        jump: desktop.jump,
+        explode: desktop.explode,
       };
     }
     return desktop;
   }
 
+  function tryDeliveries() {
+    if (!achievements.completed) return;
+    if (nextZoneIndex >= zones.length) return;
+    if (sphere.isHeld()) return;
+
+    const zone = zones[nextZoneIndex];
+    const ballPos = sphere.getPosition();
+    if (zone.tryDeliver(ballPos, sphere.isHeld())) {
+      const stepId = `ball_zone_${nextZoneIndex + 1}`;
+      circuit.complete(stepId, `${zone.label} completado`);
+      nextZoneIndex += 1;
+      if (nextZoneIndex < zones.length) {
+        hud.showMessage(`Siguiente: ${zones[nextZoneIndex].label}`);
+      }
+    }
+  }
+
   sceneManager.setUpdateCallback((delta) => {
     const state = resolveInput();
 
+    if (state.explode) {
+      const started = walls.toggleExplode();
+      if (started) {
+        const opening = walls.getExplodeTarget() > 0.5;
+        hud.showMessage(
+          opening
+            ? 'Despiece de muros (visión explotada)'
+            : 'Muros reensamblados'
+        );
+        if (opening) {
+          circuit.complete('walls_explode', 'Visión explotada activada');
+        }
+      } else {
+        hud.showMessage('Espera a que terminen de levantarse los muros');
+      }
+    }
+
     if (state.drop && player.heldObject) {
       player.drop();
-      hud.showMessage('Objeto soltado');
+      hud.showMessage('Pelota soltada');
+      tryDeliveries();
     }
 
     player.update(delta, state);
 
+    if (player.touchedJumpPlatform) {
+      circuit.complete('jump_high', 'Plataforma alta alcanzada');
+    }
+
     for (const coin of coins) coin.update(delta);
 
+    if (walls.update(delta)) {
+      circuit.complete('walls_rise', 'Levantamiento de muros finalizado');
+    }
     const playerPos = player.getPosition();
-    interactions.update(playerPos, {
-      interact: state.interact,
-    });
+    interactions.update(playerPos, { interact: state.interact });
 
-    // Interact also tries pick up if near and free, handled by InteractionSystem
+    tryDeliveries();
 
     if (!xr.isInXR) {
       cameraRig.update(delta, playerPos);
@@ -146,9 +211,7 @@ async function boot() {
   });
 
   sceneManager.start();
-  console.info(
-    '[Metaverso MVP] Running. Units: meters. AEC pipeline docs: docs/AEC_PIPELINE.md'
-  );
+  console.info('[Metaverso MVP] Circuit mode — meters, PBR, WebXR ready.');
 }
 
 boot().catch((err) => {

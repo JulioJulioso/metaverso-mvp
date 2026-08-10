@@ -1,21 +1,20 @@
 /**
- * Achievement / mission progress (coins). Events for HUD.
+ * Coin tally + celebration when all markers collected (feeds circuit step coins_all).
  */
 export class AchievementSystem {
   /**
    * @param {number} totalCoins
+   * @param {{ onAllCollected?: () => void }} [hooks]
    */
-  constructor(totalCoins) {
+  constructor(totalCoins, hooks = {}) {
     this.total = totalCoins;
     this.collected = 0;
     this.completed = false;
+    this._onAllCollected = hooks.onAllCollected;
     /** @type {Set<(payload: object) => void>} */
     this._listeners = new Set();
   }
 
-  /**
-   * @param {(payload: { collected: number, total: number, completed: boolean, message?: string }) => void} cb
-   */
   onChange(cb) {
     this._listeners.add(cb);
     return () => this._listeners.delete(cb);
@@ -42,7 +41,8 @@ export class AchievementSystem {
     if (this.completed) return false;
     if (this.collected >= this.total && this.total > 0) {
       this.completed = true;
-      this._emit('¡Misión completada!');
+      this._emit('¡Todos los marcadores recogidos!');
+      this._onAllCollected?.();
       return true;
     }
     return false;
