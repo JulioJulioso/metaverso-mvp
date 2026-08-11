@@ -41,11 +41,20 @@ export class BimIndexStub {
   }
 
   /**
-   * Resolve mesh.metadata.bimId through the index.
-   * @param {{ metadata?: { bimId?: string } }|null} mesh
+   * Resolve mesh.metadata through the index (or pass through metadata).
+   * @param {{ metadata?: { bimId?: string, label?: string, entity?: string, isMediaScreen?: boolean } }|null} mesh
    */
   resolveFromMesh(mesh) {
-    const id = mesh?.metadata?.bimId;
+    if (!mesh) return null;
+    if (mesh.metadata?.isMediaScreen) {
+      return {
+        globalId: mesh.metadata.bimId,
+        name: mesh.metadata.label,
+        entity: 'media',
+        isMediaScreen: true,
+      };
+    }
+    const id = mesh.metadata?.bimId;
     if (!id) return null;
     return this.getElement(id) ?? {
       globalId: id,

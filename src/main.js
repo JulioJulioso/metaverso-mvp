@@ -50,7 +50,7 @@ async function boot() {
 
   const walls = new WallAssembly(scene, levelConfig.walls, shadowGen);
   const zones = levelConfig.deliveryZones.map((z) => new DeliveryZone(scene, z));
-  const media = new MediaScreen(scene, levelConfig.video);
+  const media = new MediaScreen(scene, levelConfig.video, shadowGen);
 
   const player = new Player(
     scene,
@@ -157,6 +157,26 @@ async function boot() {
   let nextZoneIndex = 0;
 
   new PickingSystem(scene, camera, canvas, bimIndex, (info) => {
+    if (!info?.element && !info?.meshName) return;
+
+    // Click on 3D media unit → open YouTube overlay
+    if (info.element?.entity === 'media' || info.element?.isMediaScreen) {
+      hud.openVideo({
+        url: media.getEmbedUrl(true),
+        title: media.getTitle(),
+      });
+      return;
+    }
+
+    // Fallback: inspect mesh name from raw pick via bim / label
+    if (info.meshName && media.isScreenMesh({ metadata: info.element })) {
+      hud.openVideo({
+        url: media.getEmbedUrl(true),
+        title: media.getTitle(),
+      });
+      return;
+    }
+
     if (!info?.element) return;
     const el = info.element;
     const props = el.properties

@@ -205,17 +205,69 @@ body {
   border-color: rgba(120, 190, 130, 0.55);
 }
 
-.hud-video {
+.hud-video-modal {
   position: absolute;
-  left: 1rem;
-  bottom: 3.5rem;
-  width: min(22rem, 40vw);
-  padding: 0.65rem;
-  background: rgba(18, 20, 24, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.hud-video-modal.visible {
+  opacity: 1;
+  visibility: visible;
   pointer-events: auto;
-  backdrop-filter: blur(10px);
+}
+
+.hud-video-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 12, 0.72);
+  cursor: pointer;
+}
+
+.hud-video-modal-card {
+  position: relative;
+  z-index: 1;
+  width: min(56rem, 92vw);
+  padding: 0.85rem 0.95rem 1rem;
+  background: rgba(16, 18, 22, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+}
+
+.hud-video-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.hud-video-modal-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(232, 234, 237, 0.92);
+}
+
+.hud-btn-close {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-color: rgba(200, 120, 120, 0.45);
+  background: rgba(90, 40, 40, 0.85);
+}
+
+.hud-btn-close:hover:not(:disabled) {
+  background: rgba(120, 50, 50, 0.95);
 }
 
 .hud-video-frame {
@@ -223,7 +275,7 @@ body {
   width: 100%;
   aspect-ratio: 16 / 9;
   background: #000;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -332,9 +384,6 @@ body {
 }
 
 @media (max-width: 900px) {
-  .hud-video {
-    width: min(16rem, 48vw);
-  }
   .hud-circuit {
     width: min(16rem, 48vw);
     font-size: 0.75rem;
@@ -342,5 +391,8 @@ body {
   .hud-hints {
     white-space: normal;
     text-align: center;
+  }
+  .hud-video-modal-card {
+    width: min(96vw, 40rem);
   }
 }

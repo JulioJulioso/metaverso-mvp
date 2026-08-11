@@ -26,11 +26,20 @@ export class PickingSystem {
         this.camera
       );
       if (pick?.hit && pick.pickedMesh) {
-        const element = this.bimIndex.resolveFromMesh(pick.pickedMesh);
+        const mesh = pick.pickedMesh;
+        const fromMeta = mesh.metadata?.isMediaScreen
+          ? {
+              globalId: mesh.metadata.bimId,
+              name: mesh.metadata.label,
+              entity: 'media',
+              isMediaScreen: true,
+            }
+          : this.bimIndex.resolveFromMesh(mesh);
         this.onPick?.({
-          meshName: pick.pickedMesh.name,
+          meshName: mesh.name,
           point: pick.pickedPoint,
-          element,
+          element: fromMeta,
+          mesh,
         });
       } else {
         this.onPick?.(null);
