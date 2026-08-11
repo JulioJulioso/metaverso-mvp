@@ -53,11 +53,16 @@ export class HUD {
 
     this.completion = document.createElement('div');
     this.completion.className = 'hud-completion';
+    this.completion.setAttribute('aria-hidden', 'true');
     this.completion.innerHTML =
-      '<div class="hud-completion-card">' +
-      '<h2>¡Circuito completado!</h2>' +
-      '<p>Has recogido los marcadores, recorrido las plataformas y entregado la pelota en los tres sitios.</p>' +
+      '<div class="hud-completion-card" role="dialog" aria-labelledby="completion-title">' +
+      '<h2 id="completion-title">¡Circuito completado!</h2>' +
+      '<p>Has recogido los marcadores, recorrido las plataformas y entregado la pelota en los tres sitios. Puedes seguir explorando la escena.</p>' +
+      '<button type="button" class="hud-btn hud-completion-accept" data-accept>Aceptar</button>' +
       '</div>';
+
+    this._completionDismissed = false;
+    this._completionOpen = false;
 
     this.hints = document.createElement('div');
     this.hints.className = 'hud-hints';
@@ -84,6 +89,10 @@ export class HUD {
     });
     this._explodeBtn?.addEventListener('click', () => {
       this._actions.onExplodeWalls?.();
+    });
+
+    this.completion.querySelector('[data-accept]')?.addEventListener('click', () => {
+      this.dismissCompletion();
     });
   }
 
@@ -131,12 +140,29 @@ export class HUD {
       )
       .join('');
 
-    if (snap.message) this.showMessage(snap.message, snap.circuitComplete ? 5000 : 2800);
-    if (snap.circuitComplete) this.showCompletion(true);
+    // Only toast non-completion messages while exploring; completion uses the dialog
+    if (snap.message && !snap.circuitComplete) {
+      this.showMessage(snap.message, 2800);
+    } else if (snap.message && snap.circuitComplete && !this._completionDismissed) {
+      this.showMessage(snap.message, 3500);
+    }
+
+    // Show completion dialog only once until the user dismisses it
+    if (snap.circuitComplete && !this._completionDismissed && !this._completionOpen) {
+      this.showCompletion(true);
+    }
   }
 
   showCompletion(show) {
+    this._completionOpen = !!show;
     this.completion.classList.toggle('visible', !!show);
+    this.completion.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+
+  /** Close overlay and keep exploring (will not re-open until page reload). */
+  dismissCompletion() {
+    this._completionDismissed = true;
+    this.showCompletion(false);
   }
 
   showMessage(text, ms = 2200) {

@@ -121,20 +121,57 @@ body {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  width: min(22rem, 42vw);
-  max-height: min(50vh, 22rem);
-  overflow: auto;
-  padding: 0.75rem 1rem;
-  background: rgba(18, 20, 24, 0.82);
+  bottom: auto;
+  width: min(22rem, 46vw);
+  /* On short screens the panel stops before the bottom so the list can scroll */
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.65rem 0.5rem 0.65rem 0.9rem;
+  background: rgba(18, 20, 24, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   font-size: 0.82rem;
   line-height: 1.35;
   backdrop-filter: blur(10px);
+  /* Required: parent #hud-root is pointer-events: none */
+  pointer-events: auto;
+  z-index: 12;
+}
+
+@media (min-height: 720px) {
+  .hud-circuit {
+    max-height: min(28rem, calc(100vh - 2rem));
+  }
+}
+
+.hud-circuit > .hud-panel-title {
+  flex: 0 0 auto;
+  margin-bottom: 0.35rem;
 }
 
 .hud-circuit ul {
   list-style: none;
+  margin: 0;
+  padding: 0 0.25rem 0.15rem 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.hud-circuit ul::-webkit-scrollbar {
+  width: 8px;
+}
+
+.hud-circuit ul::-webkit-scrollbar-thumb {
+  background: rgba(200, 210, 220, 0.35);
+  border-radius: 4px;
 }
 
 .hud-circuit li {
@@ -226,12 +263,15 @@ body {
   justify-content: center;
   background: rgba(8, 10, 12, 0.55);
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  z-index: 30;
 }
 
 .hud-completion.visible {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -239,10 +279,11 @@ body {
   max-width: 28rem;
   margin: 1rem;
   padding: 1.5rem 1.75rem;
-  background: rgba(22, 24, 28, 0.95);
+  background: rgba(22, 24, 28, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   text-align: center;
+  pointer-events: auto;
 }
 
 .hud-completion-card h2 {
@@ -256,6 +297,12 @@ body {
   font-size: 0.92rem;
   color: rgba(232, 234, 237, 0.78);
   line-height: 1.5;
+  margin-bottom: 1.1rem;
+}
+
+.hud-completion-accept {
+  min-width: 8rem;
+  margin: 0 auto;
 }
 
 .hud-hints {
