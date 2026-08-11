@@ -77,7 +77,7 @@ export class HUD {
     this.hints = document.createElement('div');
     this.hints.className = 'hud-hints';
     this.hints.innerHTML =
-      '<kbd>WASD</kbd> mover · <kbd>Espacio</kbd> saltar · <kbd>E</kbd> recoger · <kbd>F</kbd> soltar · <kbd>R</kbd>/<kbd>X</kbd> muros · clic en pantalla 3D = video · VR: botón Babylon';
+      '<kbd>WASD</kbd> mover · <kbd>clic der.</kbd> orbitar cámara · <kbd>Q</kbd>/<kbd>V</kbd> girar · <kbd>Espacio</kbd> saltar · <kbd>E</kbd> recoger · clic pantalla 3D = video';
 
     this.root.append(
       this.panel,

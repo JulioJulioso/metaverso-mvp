@@ -73,7 +73,11 @@ export class Player {
 
   /**
    * @param {number} delta
-   * @param {{ forward:boolean, backward:boolean, left:boolean, right:boolean, jump?:boolean }} input
+   * @param {{
+   *   forward:boolean, backward:boolean, left:boolean, right:boolean,
+   *   jump?:boolean, faceYaw?: number
+   * }} input
+   * faceYaw: camera horizontal yaw so WASD is relative to view.
    */
   update(delta, input) {
     const speed = this.config.moveSpeed;
@@ -86,8 +90,17 @@ export class Player {
 
     if (mx !== 0 || mz !== 0) {
       const len = Math.hypot(mx, mz);
-      this.root.position.x += (mx / len) * speed * delta;
-      this.root.position.z += (mz / len) * speed * delta;
+      mx = (mx / len) * speed * delta;
+      mz = (mz / len) * speed * delta;
+
+      const yaw = input.faceYaw ?? 0;
+      // Camera-relative: forward is along camera face (-yaw in our orbital convention)
+      const sin = Math.sin(yaw);
+      const cos = Math.cos(yaw);
+      const worldX = mx * cos + mz * sin;
+      const worldZ = -mx * sin + mz * cos;
+      this.root.position.x += worldX;
+      this.root.position.z += worldZ;
     }
 
     if (input.jump && this.grounded) {

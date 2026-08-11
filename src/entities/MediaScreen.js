@@ -62,7 +62,7 @@ export class MediaScreen {
     );
     this.mesh.parent = this.root;
     this.mesh.position = new Vector3(0, config.screenPosition.y, 0.02);
-    this.mesh.rotation.y = Math.PI;
+    // Default plane faces +Z (toward spawn at origin when screen sits at negative Z)
 
     const mat = new PBRMaterial('mediaScreenMat', scene);
     mat.albedoColor = new Color3(0.06, 0.08, 0.12);
@@ -85,7 +85,6 @@ export class MediaScreen {
     );
     this.frame.parent = this.root;
     this.frame.position = new Vector3(0, config.screenPosition.y, -0.04);
-    this.frame.rotation.y = Math.PI;
     const frameMat = new PBRMaterial('mediaFrameMat', scene);
     frameMat.albedoColor = new Color3(0.1, 0.1, 0.11);
     frameMat.metallic = 0.88;
@@ -95,16 +94,16 @@ export class MediaScreen {
     this.frame.metadata = { ...this.mesh.metadata };
     if (shadowGen) shadowGen.addShadowCaster(this.frame);
 
-    // Play triangle (billboard-ish, local)
+    // Play triangle facing +Z (same as screen)
     this.playIcon = MeshBuilder.CreateCylinder(
       'mediaPlayIcon',
       { diameter: 0.45, height: 0.04, tessellation: 3 },
       scene
     );
     this.playIcon.parent = this.root;
-    this.playIcon.position = new Vector3(0, config.screenPosition.y, 0.04);
+    this.playIcon.position = new Vector3(0, config.screenPosition.y, 0.05);
     this.playIcon.rotation.z = Math.PI / 2;
-    this.playIcon.rotation.y = Math.PI;
+    this.playIcon.rotation.y = Math.PI / 2;
     const playMat = new PBRMaterial('mediaPlayMat', scene);
     playMat.albedoColor = new Color3(0.9, 0.92, 0.95);
     playMat.emissiveColor = new Color3(0.55, 0.65, 0.85);

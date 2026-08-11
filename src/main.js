@@ -37,7 +37,7 @@ async function boot() {
   const camera = sceneManager.getCamera();
   const shadowGen = sceneManager.getShadowGenerator();
 
-  const input = new InputController();
+  const input = new InputController(canvas);
   const xr = new XRController(scene);
   await xr.init();
 
@@ -206,6 +206,8 @@ async function boot() {
         jump: desktop.jump,
         explode: desktop.explode,
         riseWalls: desktop.riseWalls,
+        lookDeltaX: 0,
+        lookDeltaY: 0,
       };
     }
     return desktop;
@@ -232,6 +234,10 @@ async function boot() {
   sceneManager.setUpdateCallback((delta) => {
     const state = resolveInput();
 
+    if (!xr.isInXR && (state.lookDeltaX || state.lookDeltaY)) {
+      cameraRig.addLook(state.lookDeltaX, state.lookDeltaY);
+    }
+
     if (state.riseWalls) {
       triggerRiseWalls();
     }
@@ -245,7 +251,10 @@ async function boot() {
       hud.showMessage('Pelota soltada — cae al suelo');
     }
 
-    player.update(delta, state);
+    player.update(delta, {
+      ...state,
+      faceYaw: xr.isInXR ? 0 : cameraRig.getFaceYaw(),
+    });
     sphere.update(delta);
 
     if (player.touchedJumpPlatform) {
