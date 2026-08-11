@@ -7,13 +7,13 @@ import {
 } from '@babylonjs/core';
 
 /**
- * Five adjacent walls: animated rise (levanto) + explode / reassemble (despiece).
+ * Five adjacent walls: rise on demand (button/key), then explode / reassemble.
  */
 export class WallAssembly {
   /**
    * @param {import('@babylonjs/core').Scene} scene
    * @param {object} config levelConfig.walls
-   * @param {ShadowGenerator|null} [shadowGen]
+   * @param {import('@babylonjs/core').ShadowGenerator|null} [shadowGen]
    */
   constructor(scene, config, shadowGen = null) {
     this.scene = scene;
@@ -27,6 +27,7 @@ export class WallAssembly {
 
     this.walls = [];
     this.riseT = 0;
+    this.riseStarted = false;
     this.riseDone = false;
     this.explodeT = 0;
     this.exploded = false;
@@ -73,18 +74,34 @@ export class WallAssembly {
         (i % 2 === 0 ? 1 : -1) * 0.25
       );
 
-      // Start below ground
-      mesh.position = new Vector3(localX, -config.height / 2 - 0.2, 0);
+      const buriedY = -config.height / 2 - 0.2;
+      mesh.position = new Vector3(localX, buriedY, 0);
 
-      this.walls.push({ mesh, assembled, exploded, buriedY: -config.height / 2 - 0.2 });
+      this.walls.push({ mesh, assembled, exploded, buriedY });
     }
   }
 
-  /** @returns {boolean} true when rise fully complete first time */
+  /** Begin rise animation (idempotent). @returns {boolean} started now */
+  startRise() {
+    if (this.riseStarted || this.riseDone) return false;
+    this.riseStarted = true;
+    this.riseT = 0;
+    return true;
+  }
+
+  isRiseStarted() {
+    return this.riseStarted;
+  }
+
+  isRiseDone() {
+    return this.riseDone;
+  }
+
+  /** @returns {boolean} true when rise fully complete this frame */
   update(delta) {
     let justFinishedRise = false;
 
-    if (!this.riseDone) {
+    if (this.riseStarted && !this.riseDone) {
       this.riseT += delta / this.config.riseDuration;
       if (this.riseT >= 1) {
         this.riseT = 1;
@@ -120,16 +137,12 @@ export class WallAssembly {
   _applyExplodePose() {
     const e = easeInOut(this.explodeT);
     for (const w of this.walls) {
-      w.mesh.position.x =
-        w.assembled.x + (w.exploded.x - w.assembled.x) * e;
-      w.mesh.position.y =
-        w.assembled.y + (w.exploded.y - w.assembled.y) * e;
-      w.mesh.position.z =
-        w.assembled.z + (w.exploded.z - w.assembled.z) * e;
+      w.mesh.position.x = w.assembled.x + (w.exploded.x - w.assembled.x) * e;
+      w.mesh.position.y = w.assembled.y + (w.exploded.y - w.assembled.y) * e;
+      w.mesh.position.z = w.assembled.z + (w.exploded.z - w.assembled.z) * e;
     }
   }
 
-  /** Toggle exploded assembly view */
   toggleExplode() {
     if (!this.riseDone) return false;
     this._explodeTarget = this.exploded || this.explodeT > 0.5 ? 0 : 1;

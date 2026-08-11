@@ -53,6 +53,70 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.hud-actions {
+  position: absolute;
+  top: 6.5rem;
+  left: 1rem;
+  width: min(14rem, 42vw);
+  padding: 0.75rem;
+  background: rgba(18, 20, 24, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  backdrop-filter: blur(10px);
+}
+
+.hud-btn {
+  appearance: none;
+  border: 1px solid rgba(120, 170, 210, 0.45);
+  background: rgba(40, 70, 95, 0.9);
+  color: #eef2f6;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.55rem 0.7rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.hud-btn:hover:not(:disabled) {
+  background: rgba(55, 95, 125, 0.95);
+}
+
+.hud-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hud-btn-secondary {
+  border-color: rgba(160, 150, 120, 0.4);
+  background: rgba(70, 62, 48, 0.85);
+  font-weight: 500;
+}
+
+.hud-btn-secondary:hover:not(:disabled) {
+  background: rgba(90, 80, 60, 0.95);
+}
+
+.hud-actions-hint {
+  font-size: 0.7rem;
+  color: rgba(232, 234, 237, 0.5);
+  line-height: 1.3;
+}
+
+.hud-actions-hint kbd {
+  display: inline-block;
+  padding: 0.05rem 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  font-size: 0.66rem;
+  font-family: inherit;
+}
+
 .hud-circuit {
   position: absolute;
   top: 1rem;

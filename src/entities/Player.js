@@ -184,9 +184,12 @@ export class Player {
     const obj = this.heldObject;
     const world = obj.mesh.getAbsolutePosition().clone();
     obj.mesh.setParent(null);
-    obj.mesh.position = world;
-    obj.mesh.position.y = Math.max(obj.mesh.position.y, this.getFeetY() + 0.35);
-    obj.setHeld(false);
+    obj.mesh.position.copyFrom(world);
+    if (typeof obj.releaseToWorld === 'function') {
+      obj.releaseToWorld();
+    } else {
+      obj.setHeld(false);
+    }
     this.heldObject = null;
     return obj;
   }

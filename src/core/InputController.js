@@ -1,5 +1,5 @@
 /**
- * Keyboard input: WASD, Space=jump, E=interact, F=drop, X=explode walls.
+ * Keyboard: WASD, Space=jump, E=interact, F=drop, R=rise walls, X=explode walls.
  */
 export class InputController {
   constructor() {
@@ -8,6 +8,7 @@ export class InputController {
     this._dropPressed = false;
     this._jumpPressed = false;
     this._explodePressed = false;
+    this._risePressed = false;
 
     this._onKeyDown = (e) => {
       this._keys.add(e.code);
@@ -25,6 +26,10 @@ export class InputController {
       }
       if (e.code === 'KeyX') {
         if (!e.repeat) this._explodePressed = true;
+        e.preventDefault();
+      }
+      if (e.code === 'KeyR') {
+        if (!e.repeat) this._risePressed = true;
         e.preventDefault();
       }
     };
@@ -51,12 +56,24 @@ export class InputController {
     const drop = this._dropPressed;
     const jump = this._jumpPressed;
     const explode = this._explodePressed;
+    const riseWalls = this._risePressed;
     this._interactPressed = false;
     this._dropPressed = false;
     this._jumpPressed = false;
     this._explodePressed = false;
+    this._risePressed = false;
 
-    return { forward, backward, left, right, interact, drop, jump, explode };
+    return {
+      forward,
+      backward,
+      left,
+      right,
+      interact,
+      drop,
+      jump,
+      explode,
+      riseWalls,
+    };
   }
 
   dispose() {

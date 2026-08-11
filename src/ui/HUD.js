@@ -1,20 +1,31 @@
 /**
- * DOM HUD: coins, circuit checklist, YouTube embed, completion banner.
+ * DOM HUD: coins, circuit checklist, YouTube embed, wall action buttons, completion.
  */
 export class HUD {
   /**
    * @param {HTMLElement} root
    * @param {{ youtubeEmbedUrl: string, videoTitle: string }} media
+   * @param {{ onRiseWalls?: () => void, onExplodeWalls?: () => void }} [actions]
    */
-  constructor(root, media) {
+  constructor(root, media, actions = {}) {
     this.root = root;
     this._toastTimer = null;
+    this._actions = actions;
 
     this.panel = document.createElement('div');
     this.panel.className = 'hud-panel';
     this.panel.innerHTML =
       '<div class="hud-panel-title">Recorrido</div>' +
       '<div><strong>Marcadores:</strong> <span data-coins>0 / 0</span></div>';
+
+    this.actions = document.createElement('div');
+    this.actions.className = 'hud-actions';
+    this.actions.innerHTML = `
+      <div class="hud-panel-title">Animaciones</div>
+      <button type="button" class="hud-btn" data-rise>Levantar muros</button>
+      <button type="button" class="hud-btn hud-btn-secondary" data-explode disabled>Visión explotada (X)</button>
+      <p class="hud-actions-hint">También: <kbd>R</kbd> levantar · <kbd>X</kbd> despiece</p>
+    `;
 
     this.circuit = document.createElement('div');
     this.circuit.className = 'hud-circuit';
@@ -51,10 +62,11 @@ export class HUD {
     this.hints = document.createElement('div');
     this.hints.className = 'hud-hints';
     this.hints.innerHTML =
-      '<kbd>WASD</kbd> mover · <kbd>Espacio</kbd> saltar · <kbd>E</kbd> interactuar · <kbd>F</kbd> soltar · <kbd>X</kbd> despiece muros · VR: botón Babylon';
+      '<kbd>WASD</kbd> mover · <kbd>Espacio</kbd> saltar · <kbd>E</kbd> recoger · <kbd>F</kbd> soltar · <kbd>R</kbd> levantar muros · <kbd>X</kbd> despiece · VR: botón Babylon';
 
     this.root.append(
       this.panel,
+      this.actions,
       this.circuit,
       this.videoPanel,
       this.toast,
@@ -64,6 +76,38 @@ export class HUD {
 
     this._coinsEl = this.panel.querySelector('[data-coins]');
     this._stepsEl = this.circuit.querySelector('[data-steps]');
+    this._riseBtn = this.actions.querySelector('[data-rise]');
+    this._explodeBtn = this.actions.querySelector('[data-explode]');
+
+    this._riseBtn?.addEventListener('click', () => {
+      this._actions.onRiseWalls?.();
+    });
+    this._explodeBtn?.addEventListener('click', () => {
+      this._actions.onExplodeWalls?.();
+    });
+  }
+
+  setRiseButtonEnabled(enabled) {
+    if (this._riseBtn) this._riseBtn.disabled = !enabled;
+  }
+
+  setExplodeButtonEnabled(enabled) {
+    if (this._explodeBtn) this._explodeBtn.disabled = !enabled;
+  }
+
+  markRiseStarted() {
+    if (this._riseBtn) {
+      this._riseBtn.disabled = true;
+      this._riseBtn.textContent = 'Levantando…';
+    }
+  }
+
+  markRiseDone() {
+    if (this._riseBtn) {
+      this._riseBtn.disabled = true;
+      this._riseBtn.textContent = 'Muros levantados';
+    }
+    this.setExplodeButtonEnabled(true);
   }
 
   updateCoins(state) {

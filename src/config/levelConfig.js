@@ -52,12 +52,6 @@ export const levelConfig = {
       size: { x: 2.5, y: 0.35, z: 2.5 },
       albedo: { r: 0.34, g: 0.33, b: 0.32 },
     },
-    {
-      id: 'pad-ball-area',
-      position: { x: -4, y: 0.15, z: 4 },
-      size: { x: 6, y: 0.3, z: 5 },
-      albedo: { r: 0.4, g: 0.39, b: 0.38 },
-    },
   ],
 
   coins: [
@@ -83,33 +77,38 @@ export const levelConfig = {
   pickupSphere: {
     id: 'sphere-1',
     globalId: 'demo-sphere-001',
-    position: { x: -4, y: 0.55, z: 2.5 },
+    // Open ground left of spawn (no platform overhead)
+    position: { x: -5.5, y: 0.35, z: 0 },
     radius: 0.32,
     interactRadius: 1.25,
+    gravity: 16,
   },
 
-  /** Carry the ball here in order after all coins are collected. */
+  /**
+   * Delivery plaza on open slab west of origin — clear LOS, no platforms above.
+   * Order: 1 → 2 → 3 after all coins.
+   */
   deliveryZones: [
     {
       id: 'zone-1',
       label: 'Sitio de entrega 1',
-      position: { x: -6, y: 0.05, z: 5.5 },
-      radius: 1.1,
-      color: { r: 0.15, g: 0.45, b: 0.55 },
+      position: { x: -7.5, y: 0.02, z: 3 },
+      radius: 1.35,
+      color: { r: 0.12, g: 0.55, b: 0.62 },
     },
     {
       id: 'zone-2',
       label: 'Sitio de entrega 2',
-      position: { x: -2, y: 0.05, z: 6.5 },
-      radius: 1.1,
-      color: { r: 0.2, g: 0.4, b: 0.5 },
+      position: { x: -7.5, y: 0.02, z: 0 },
+      radius: 1.35,
+      color: { r: 0.15, g: 0.48, b: 0.58 },
     },
     {
       id: 'zone-3',
       label: 'Sitio de entrega 3',
-      position: { x: -4, y: 0.05, z: 0.5 },
-      radius: 1.1,
-      color: { r: 0.18, g: 0.38, b: 0.48 },
+      position: { x: -7.5, y: 0.02, z: -3 },
+      radius: 1.35,
+      color: { r: 0.18, g: 0.42, b: 0.52 },
     },
   ],
 
@@ -134,8 +133,8 @@ export const levelConfig = {
   },
 
   circuitSteps: [
-    { id: 'walls_rise', label: 'Observar levantamiento de muros' },
-    { id: 'walls_explode', label: 'Activar visión explotada de muros (X)' },
+    { id: 'walls_rise', label: 'Levantar muros (botón en HUD o tecla R)' },
+    { id: 'walls_explode', label: 'Activar visión explotada de muros (X o botón)' },
     { id: 'coins_all', label: 'Recoger todos los marcadores del recorrido' },
     { id: 'jump_high', label: 'Alcanzar plataforma alta (salto)' },
     { id: 'ball_zone_1', label: 'Llevar la pelota al sitio 1' },

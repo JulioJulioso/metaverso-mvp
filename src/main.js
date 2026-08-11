@@ -46,6 +46,8 @@ async function boot() {
   );
   const coins = levelConfig.coins.map((c) => new Coin(scene, c, shadowGen));
   const sphere = new PickupSphere(scene, levelConfig.pickupSphere, shadowGen);
+  sphere.setWorldColliders(platforms, levelConfig.groundY);
+
   const walls = new WallAssembly(scene, levelConfig.walls, shadowGen);
   const zones = levelConfig.deliveryZones.map((z) => new DeliveryZone(scene, z));
   const media = new MediaScreen(scene, levelConfig.video);
@@ -59,9 +61,14 @@ async function boot() {
   );
 
   const circuit = new CircuitSystem(levelConfig.circuitSteps);
+  /** @type {import('./ui/HUD.js').HUD|null} */
+  let hudRef = null;
   const achievements = new AchievementSystem(coins.length, {
     onAllCollected: () => {
       circuit.complete('coins_all', '¡Todos los marcadores recogidos!');
+      hudRef?.showMessage(
+        'Ahora lleva la pelota a los sitios 1 → 2 → 3 (oeste, postes con anillo)'
+      );
     },
   });
 
@@ -71,10 +78,48 @@ async function boot() {
   const bimIndex = new BimIndexStub();
   bimIndex.loadMock(levelConfig.bimMockElements);
 
-  const hud = new HUD(hudRoot, {
-    youtubeEmbedUrl: media.getEmbedUrl(),
-    videoTitle: levelConfig.video.title,
-  });
+  function triggerRiseWalls() {
+    if (walls.startRise()) {
+      hudRef?.markRiseStarted();
+      hudRef?.showMessage('Levantamiento de muros en curso…');
+      return true;
+    }
+    if (walls.isRiseDone()) {
+      hudRef?.showMessage('Los muros ya están levantados');
+    } else if (walls.isRiseStarted()) {
+      hudRef?.showMessage('Levantamiento ya en curso…');
+    }
+    return false;
+  }
+
+  function triggerExplodeWalls() {
+    const started = walls.toggleExplode();
+    if (started) {
+      const opening = walls.getExplodeTarget() > 0.5;
+      hudRef?.showMessage(
+        opening ? 'Despiece de muros (visión explotada)' : 'Muros reensamblados'
+      );
+      if (opening) {
+        circuit.complete('walls_explode', 'Visión explotada activada');
+      }
+      return true;
+    }
+    hudRef?.showMessage('Primero levanta los muros (botón o R)');
+    return false;
+  }
+
+  const hud = new HUD(
+    hudRoot,
+    {
+      youtubeEmbedUrl: media.getEmbedUrl(),
+      videoTitle: levelConfig.video.title,
+    },
+    {
+      onRiseWalls: () => triggerRiseWalls(),
+      onExplodeWalls: () => triggerExplodeWalls(),
+    }
+  );
+  hudRef = hud;
   hud.updateCoins(achievements.getState());
   achievements.onChange((state) => hud.updateCoins(state));
   circuit.onChange((snap) => hud.updateCircuit(snap));
@@ -109,7 +154,6 @@ async function boot() {
     },
   });
 
-  /** Next required delivery zone index (only after coins complete). */
   let nextZoneIndex = 0;
 
   new PickingSystem(scene, camera, canvas, bimIndex, (info) => {
@@ -141,6 +185,7 @@ async function boot() {
         drop: desktop.drop,
         jump: desktop.jump,
         explode: desktop.explode,
+        riseWalls: desktop.riseWalls,
       };
     }
     return desktop;
@@ -150,6 +195,7 @@ async function boot() {
     if (!achievements.completed) return;
     if (nextZoneIndex >= zones.length) return;
     if (sphere.isHeld()) return;
+    if (!sphere.grounded) return;
 
     const zone = zones[nextZoneIndex];
     const ballPos = sphere.getPosition();
@@ -166,30 +212,21 @@ async function boot() {
   sceneManager.setUpdateCallback((delta) => {
     const state = resolveInput();
 
+    if (state.riseWalls) {
+      triggerRiseWalls();
+    }
+
     if (state.explode) {
-      const started = walls.toggleExplode();
-      if (started) {
-        const opening = walls.getExplodeTarget() > 0.5;
-        hud.showMessage(
-          opening
-            ? 'Despiece de muros (visión explotada)'
-            : 'Muros reensamblados'
-        );
-        if (opening) {
-          circuit.complete('walls_explode', 'Visión explotada activada');
-        }
-      } else {
-        hud.showMessage('Espera a que terminen de levantarse los muros');
-      }
+      triggerExplodeWalls();
     }
 
     if (state.drop && player.heldObject) {
       player.drop();
-      hud.showMessage('Pelota soltada');
-      tryDeliveries();
+      hud.showMessage('Pelota soltada — cae al suelo');
     }
 
     player.update(delta, state);
+    sphere.update(delta);
 
     if (player.touchedJumpPlatform) {
       circuit.complete('jump_high', 'Plataforma alta alcanzada');
@@ -199,7 +236,9 @@ async function boot() {
 
     if (walls.update(delta)) {
       circuit.complete('walls_rise', 'Levantamiento de muros finalizado');
+      hud.markRiseDone();
     }
+
     const playerPos = player.getPosition();
     interactions.update(playerPos, { interact: state.interact });
 
