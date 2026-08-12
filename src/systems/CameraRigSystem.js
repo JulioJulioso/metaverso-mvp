@@ -1,8 +1,9 @@
-import { Vector3, Matrix, Quaternion } from '@babylonjs/core';
+import { Vector3 } from '@babylonjs/core';
+import { getLookBasisXZ } from './LocomotionMath.js';
 
 /**
  * Third-person orbit camera (yaw/pitch). Disabled in XR.
- * WASD is relative to this yaw when Player receives faceYaw.
+ * Movement facing comes from getFaceYaw() → LocomotionMath.
  */
 export class CameraRigSystem {
   /**
@@ -14,6 +15,7 @@ export class CameraRigSystem {
    *   minPitch?: number,
    *   maxPitch?: number,
    *   initialYaw?: number,
+   *   initialPitch?: number,
    * }} [options]
    */
   constructor(camera, options = {}) {
@@ -23,9 +25,8 @@ export class CameraRigSystem {
     this.lerp = options.lerp ?? 10;
     this.minPitch = options.minPitch ?? 0.12;
     this.maxPitch = options.maxPitch ?? 1.25;
-    /** Yaw around player (radians). 0 = looking along +Z from -Z. */
+    /** Orbit yaw: 0 → camera on -Z looking +Z */
     this.yaw = options.initialYaw ?? 0;
-    /** Pitch from horizontal plane (radians). */
     this.pitch = options.initialPitch ?? 0.45;
     this.enabled = true;
   }
@@ -46,9 +47,14 @@ export class CameraRigSystem {
     );
   }
 
-  /** Horizontal facing used to orient player movement (XZ). */
+  /** Same yaw used by LocomotionMath.localMoveToWorldXZ */
   getFaceYaw() {
     return this.yaw;
+  }
+
+  /** Debug / XR helpers */
+  getLookForwardXZ() {
+    return getLookBasisXZ(this.yaw);
   }
 
   /**
@@ -62,18 +68,18 @@ export class CameraRigSystem {
     const py = playerPosition.y;
     const pz = playerPosition.z;
 
-    // Orbit: camera sits opposite the look direction
+    // Place camera opposite look direction (behind the player)
     const horizontal = Math.cos(this.pitch) * this.distance;
-    const offsetX = Math.sin(this.yaw) * horizontal;
-    const offsetZ = -Math.cos(this.yaw) * horizontal;
+    const { fx, fz } = getLookBasisXZ(this.yaw);
+    const offsetX = -fx * horizontal;
+    const offsetZ = -fz * horizontal;
     const offsetY = Math.sin(this.pitch) * this.distance + this.heightBias * 0.35;
 
     const targetPos = new Vector3(px + offsetX, py + offsetY, pz + offsetZ);
     const t = 1 - Math.exp(-this.lerp * delta);
     this.camera.position = Vector3.Lerp(this.camera.position, targetPos, t);
 
-    const lookAt = new Vector3(px, py + 0.95, pz);
-    this.camera.setTarget(lookAt);
+    this.camera.setTarget(new Vector3(px, py + 0.95, pz));
   }
 }
 

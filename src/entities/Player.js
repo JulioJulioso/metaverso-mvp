@@ -5,9 +5,15 @@ import {
   Vector3,
   TransformNode,
 } from '@babylonjs/core';
+import {
+  localMoveToWorldXZ,
+  normalizeXZ,
+  yawFromVelocityXZ,
+} from '../systems/LocomotionMath.js';
 
 /**
  * Controllable visitor capsule with jump / step-limited platforms.
+ * Horizontal move is camera-relative via faceYaw (see LocomotionMath).
  */
 export class Player {
   /**
@@ -72,35 +78,44 @@ export class Player {
   }
 
   /**
+   * Snap body to a world position (used to follow XR camera when in VR).
+   * @param {{ x:number, y:number, z:number }} worldPos center of capsule
+   */
+  setWorldPosition(worldPos) {
+    this.root.position.x = worldPos.x;
+    this.root.position.y = worldPos.y;
+    this.root.position.z = worldPos.z;
+  }
+
+  /**
    * @param {number} delta
    * @param {{
-   *   forward:boolean, backward:boolean, left:boolean, right:boolean,
-   *   jump?:boolean, faceYaw?: number
+   *   forward?: boolean, backward?: boolean, left?: boolean, right?: boolean,
+   *   moveX?: number, moveZ?: number,
+   *   jump?: boolean, faceYaw?: number,
+   *   skipHorizontal?: boolean,
    * }} input
-   * faceYaw: camera horizontal yaw so WASD is relative to view.
    */
   update(delta, input) {
-    const speed = this.config.moveSpeed;
-    let mx = 0;
-    let mz = 0;
-    if (input.forward) mz += 1;
-    if (input.backward) mz -= 1;
-    if (input.left) mx -= 1;
-    if (input.right) mx += 1;
+    if (!input.skipHorizontal) {
+      let mx = input.moveX ?? 0;
+      let mz = input.moveZ ?? 0;
+      if (input.forward) mz += 1;
+      if (input.backward) mz -= 1;
+      if (input.left) mx -= 1;
+      if (input.right) mx += 1;
 
-    if (mx !== 0 || mz !== 0) {
-      const len = Math.hypot(mx, mz);
-      mx = (mx / len) * speed * delta;
-      mz = (mz / len) * speed * delta;
+      const n = normalizeXZ(mx, mz);
+      if (n.len > 0) {
+        const speed = this.config.moveSpeed * delta;
+        const yaw = input.faceYaw ?? 0;
+        const world = localMoveToWorldXZ(n.x * speed, n.z * speed, yaw);
+        this.root.position.x += world.x;
+        this.root.position.z += world.z;
 
-      const yaw = input.faceYaw ?? 0;
-      // Camera-relative: forward is along camera face (-yaw in our orbital convention)
-      const sin = Math.sin(yaw);
-      const cos = Math.cos(yaw);
-      const worldX = mx * cos + mz * sin;
-      const worldZ = -mx * sin + mz * cos;
-      this.root.position.x += worldX;
-      this.root.position.z += worldZ;
+        const face = yawFromVelocityXZ(world.x, world.z);
+        if (face != null) this.root.rotation.y = face;
+      }
     }
 
     if (input.jump && this.grounded) {

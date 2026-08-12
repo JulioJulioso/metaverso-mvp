@@ -38,7 +38,11 @@ async function boot() {
   const shadowGen = sceneManager.getShadowGenerator();
 
   const input = new InputController(canvas);
-  const xr = new XRController(scene);
+  const xr = new XRController(scene, {
+    floorMeshes: [sceneManager.ground],
+    movementSpeed: 0.4,
+    rotationSpeed: 0.3,
+  });
   await xr.init();
 
   const platforms = levelConfig.platforms.map(
@@ -201,6 +205,8 @@ async function boot() {
         backward: xrMove.backward,
         left: xrMove.left,
         right: xrMove.right,
+        moveX: xrMove.moveX ?? 0,
+        moveZ: xrMove.moveZ ?? 0,
         interact: xrMove.interact || desktop.interact,
         drop: desktop.drop,
         jump: desktop.jump,
@@ -208,9 +214,11 @@ async function boot() {
         riseWalls: desktop.riseWalls,
         lookDeltaX: 0,
         lookDeltaY: 0,
+        // When Babylon MOVEMENT drives the XR camera, don't also translate Player via sticks
+        skipHorizontal: xr.usesNativeMovement(),
       };
     }
-    return desktop;
+    return { ...desktop, skipHorizontal: false };
   }
 
   function tryDeliveries() {
@@ -255,6 +263,19 @@ async function boot() {
       ...state,
       faceYaw: xr.isInXR ? 0 : cameraRig.getFaceYaw(),
     });
+
+    // Keep gameplay capsule under the headset when XR MOVEMENT moves the camera
+    if (xr.isInXR && xr.usesNativeMovement()) {
+      const viewer = xr.getViewerPosition();
+      if (viewer) {
+        player.setWorldPosition({
+          x: viewer.x,
+          y: viewer.y - levelConfig.player.height * 0.35,
+          z: viewer.z,
+        });
+      }
+    }
+
     sphere.update(delta);
 
     if (player.touchedJumpPlatform) {
