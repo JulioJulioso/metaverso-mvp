@@ -217,8 +217,8 @@ export class Player {
     object.mesh.setParent(parent);
     object.mesh.position = Vector3.Zero();
     if (attachNode) {
-      // Slight forward offset so ball sits ahead of the grip
-      object.mesh.position = new Vector3(0, 0, 0.08);
+      // Along pointer aim (+Z in Babylon left-handed XR)
+      object.mesh.position = new Vector3(0, 0, 0.12);
     }
     object.setHeld(true);
     this.heldObject = object;

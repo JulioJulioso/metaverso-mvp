@@ -7,6 +7,7 @@ import {
   StandardMaterial,
   Color3,
   Ray,
+  Space,
 } from '@babylonjs/core';
 
 /**
@@ -104,6 +105,12 @@ export class XRController {
         motionController.onModelLoadedObservable.add(() => {
           console.info('[XRController] Controller model loaded:', controller.uniqueId);
           this._disposeFallbackGrip(controller.uniqueId);
+          // Babylon profiled controllers rotate rootMesh +PI on LH scenes; on Quest
+          // Browser that leaves the mesh facing opposite the laser — undo it.
+          const root = motionController.rootMesh;
+          if (root && !this.scene.useRightHandedSystem) {
+            root.rotate(Axis.Y, Math.PI, Space.LOCAL);
+          }
         });
 
         window.setTimeout(() => {
@@ -125,9 +132,10 @@ export class XRController {
     const id = controller.uniqueId;
     if (this._fallbackGrips.has(id)) return;
 
+    // Parent to pointer (same node as the laser), long axis along aim (+Z in LH)
     const grip = MeshBuilder.CreateBox(
       `xrGrip_${id}`,
-      { width: 0.04, height: 0.08, depth: 0.12 },
+      { width: 0.035, height: 0.07, depth: 0.14 },
       this.scene
     );
     const mat = new StandardMaterial(`xrGripMat_${id}`, this.scene);
@@ -136,10 +144,10 @@ export class XRController {
     grip.material = mat;
     grip.isPickable = false;
 
-    const parent = controller.grip || controller.pointer || null;
+    const parent = controller.pointer || controller.grip || null;
     if (parent) {
       grip.parent = parent;
-      grip.position = new Vector3(0, 0, 0.02);
+      grip.position = new Vector3(0, 0, 0.07);
     }
 
     this._fallbackGrips.set(id, grip);
@@ -154,7 +162,7 @@ export class XRController {
   }
 
   /**
-   * Prefer right grip/pointer for held objects; else any controller.
+   * Prefer right pointer (same aim as laser) for held objects.
    * @returns {import('@babylonjs/core').TransformNode|null}
    */
   getPrimaryHandNode() {
@@ -164,11 +172,11 @@ export class XRController {
     const left = controllers.find((c) => c.inputSource?.handedness === 'left');
     const pick = right || left || controllers[0];
     if (!pick) return null;
-    return pick.grip || pick.pointer || null;
+    return pick.pointer || pick.grip || null;
   }
 
   /**
-   * World-space ray from preferred pointing controller.
+   * World-space ray matching Babylon's laser (getWorldPointerRayToRef).
    * @returns {{ origin: Vector3, direction: Vector3, controller: object }|null}
    */
   getPointerRay() {
@@ -180,7 +188,6 @@ export class XRController {
       ...controllers,
     ];
     for (const ctrl of ordered) {
-      // Babylon WebXRInputSource helper when available
       if (typeof ctrl.getWorldPointerRayToRef === 'function') {
         const ray = new Ray(Vector3.Zero(), Vector3.Forward(), 1);
         ctrl.getWorldPointerRayToRef(ray);
@@ -193,12 +200,12 @@ export class XRController {
       const pointer = ctrl.pointer;
       if (!pointer) continue;
       const origin = pointer.getAbsolutePosition().clone();
-      // Controllers typically aim along local -Z
+      // Match Babylon LH pointer ray: local +Z
       let direction = pointer.getDirection
-        ? pointer.getDirection(Axis.Z).scale(-1)
-        : new Vector3(0, 0, -1);
+        ? pointer.getDirection(Axis.Z)
+        : new Vector3(0, 0, 1);
       if (direction.lengthSquared() < 1e-6) {
-        direction = new Vector3(0, 0, -1);
+        direction = new Vector3(0, 0, 1);
       } else {
         direction.normalize();
       }
