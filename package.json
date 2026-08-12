@@ -1,13 +1,14 @@
 {
   "name": "metaverso-mvp",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "description": "MVP metaverso arquitectónico en navegador (Babylon.js + WebXR), AEC-ready",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:pages": "vite build --outDir docs --emptyOutDir",
+    "stamp": "node scripts/stamp-build.mjs",
+    "build:pages": "npm run stamp && vite build --outDir docs --emptyOutDir",
     "preview": "vite preview"
   },
   "dependencies": {

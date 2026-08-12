@@ -395,6 +395,24 @@ body {
   font-family: inherit;
 }
 
+.hud-version {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 0.75rem;
+  z-index: 20;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  color: rgba(232, 234, 237, 0.72);
+  background: rgba(8, 10, 12, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .hud-circuit {
     width: min(16rem, 48vw);
@@ -403,6 +421,12 @@ body {
   .hud-hints {
     white-space: normal;
     text-align: center;
+    max-width: calc(100vw - 8rem);
+  }
+  .hud-version {
+    font-size: 0.62rem;
+    bottom: 0.5rem;
+    right: 0.5rem;
   }
   .hud-video-modal-card {
     width: min(96vw, 40rem);

@@ -6,8 +6,9 @@ export class HUD {
    * @param {HTMLElement} root
    * @param {{ youtubeEmbedUrl: string, videoTitle: string }} media
    * @param {{ onRiseWalls?: () => void, onExplodeWalls?: () => void }} [actions]
+   * @param {{ versionLabel?: string }} [opts]
    */
-  constructor(root, media, actions = {}) {
+  constructor(root, media, actions = {}, opts = {}) {
     this.root = root;
     this._toastTimer = null;
     this._actions = actions;
@@ -80,6 +81,11 @@ export class HUD {
     this.hints.innerHTML =
       '<kbd>WASD</kbd> mover · <kbd>Q</kbd>/<kbd>E</kbd> girar · <kbd>clic der.</kbd> orbitar · <kbd>R</kbd> tomar · <kbd>F</kbd> soltar · cerca de muros = botones · clic pantalla = video';
 
+    this.version = document.createElement('div');
+    this.version.className = 'hud-version';
+    this.version.setAttribute('aria-label', 'Versión de build');
+    this.version.textContent = opts.versionLabel || '';
+
     this.root.append(
       this.panel,
       this.actions,
@@ -87,7 +93,8 @@ export class HUD {
       this.videoModal,
       this.toast,
       this.completion,
-      this.hints
+      this.hints,
+      this.version
     );
 
     this._coinsEl = this.panel.querySelector('[data-coins]');
@@ -118,6 +125,13 @@ export class HUD {
       }
     };
     window.addEventListener('keydown', this._onKeyDown);
+  }
+
+  /**
+   * @param {string} label
+   */
+  setVersion(label) {
+    if (this.version) this.version.textContent = label || '';
   }
 
   /**

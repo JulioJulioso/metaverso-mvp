@@ -37,13 +37,22 @@ Repo: [github.com/JulioJulioso/metaverso-mvp](https://github.com/JulioJulioso/me
 
 Debes servir el **build de producción** (`docs/` tras `npm run build:pages`).
 
-1. Genera el sitio:
+Cada `build:pages` **estampa una versión nueva** (`package.json` patch + `src/config/buildInfo.js`). Esa etiqueta aparece siempre en el **HUD** (esquina inferior derecha), p. ej. `v0.1.13 | 2026-08-12 11:05`. Úsala para confirmar que Quest/Pages tiene el build que acabas de subir (hard refresh si no coincide).
+
+1. Genera el sitio (stamp + build):
 
 ```bash
 npm run build:pages
 ```
 
-2. Commit y push de la carpeta `docs/` (tú; el agente no hace commit/push).
+2. Commit y push de `docs/`, `package.json` y `src/config/buildInfo.js` (tú; el agente no hace commit/push). En PowerShell:
+
+```powershell
+git add src package.json docs scripts
+git commit -m "chore: deploy pages build"
+git push origin main
+```
+
 3. En GitHub: **Settings → Pages → Build and deployment**
    - **Source:** Deploy from a branch  
    - **Branch:** `main`  

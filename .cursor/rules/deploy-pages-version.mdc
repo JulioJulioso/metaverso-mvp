@@ -1,0 +1,40 @@
+---
+description: Deploy GitHub Pages with stamped HUD version; agent never commits/pushes
+alwaysApply: true
+---
+
+# Deploy Pages + versión HUD (metaverso-mvp)
+
+## Git
+
+- El **agente NO** ejecuta `git commit`, `git push` ni `git add` orientado a commitear.
+- Tras cambios listos para Pages, el agente indica al **usuario** los comandos PowerShell.
+
+## Versionado
+
+- Cada deploy a Pages es una **versión distinta**.
+- `npm run build:pages` ejecuta `stamp` (incrementa patch en `package.json` + escribe `src/config/buildInfo.js`) y luego el build a `docs/`.
+- El HUD muestra `BUILD_INFO.label` (esquina), formato `v0.1.N | YYYY-MM-DD HH:mm`.
+- Tras el stamp/build, el agente **lee** `src/config/buildInfo.js` y **dice en chat** la `label` esperada en Quest/Pages.
+
+## Flujo deploy (PowerShell, sin heredoc bash)
+
+```powershell
+cd "d:\Unity Repository\MetaversoSinestesia\MetaversoSinestesia\metaverso-mvp"
+npm run build:pages
+git add src package.json docs scripts
+git status
+git commit -m "chore: deploy pages build vX.Y.Z"
+git push origin main
+```
+
+- Incluir **siempre** `docs/` en el commit de deploy; sin eso Pages no cambia.
+- También incluir `package.json` y `src/config/buildInfo.js` (generados por stamp).
+- En Quest/browser: hard refresh si la versión del HUD no coincide con la anunciada.
+- Commits de mensaje: usar `git commit -m "..."` (PowerShell no soporta `<<'EOF'`).
+
+## Verificación
+
+- Fuente de verdad en runtime: badge HUD / log `[boot] build …`.
+- URL: https://juliojulioso.github.io/metaverso-mvp/
+- Pages: branch `main`, folder `/docs`.

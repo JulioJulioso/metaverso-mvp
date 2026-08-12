@@ -18,6 +18,7 @@ import { PickingSystem } from './systems/PickingSystem.js';
 import { NetworkStub } from './systems/NetworkStub.js';
 import { isNearXZ } from './systems/CollisionSystem.js';
 import { HUD } from './ui/HUD.js';
+import { BUILD_INFO } from './config/buildInfo.js';
 
 import '@babylonjs/loaders/glTF';
 
@@ -123,9 +124,11 @@ async function boot() {
     {
       onRiseWalls: () => triggerRiseWalls(),
       onExplodeWalls: () => triggerExplodeWalls(),
-    }
+    },
+    { versionLabel: BUILD_INFO.label }
   );
   hudRef = hud;
+  console.info('[boot] build', BUILD_INFO.label);
   hud.updateCoins(achievements.getState());
   achievements.onChange((state) => hud.updateCoins(state));
   circuit.onChange((snap) => hud.updateCircuit(snap));
