@@ -6,14 +6,11 @@ import {
   MeshBuilder,
   StandardMaterial,
   Color3,
+  Ray,
 } from '@babylonjs/core';
 
 /**
- * Isolated WebXR session + Quest-friendly locomotion.
- *
- * - Moves the XR camera (not only the Player mesh).
- * - Reads Quest thumbsticks via motionController + gamepad axes fallbacks.
- * - Keeps pointer lasers; adds fallback grip meshes if controller models fail to load.
+ * WebXR session + Quest locomotion, buttons, hand attach, laser pick.
  */
 export class XRController {
   /**
@@ -32,6 +29,14 @@ export class XRController {
     this._listeners = new Set();
     /** @type {Map<string, import('@babylonjs/core').Mesh>} */
     this._fallbackGrips = new Map();
+    /** @type {Record<string, boolean>} */
+    this._prevButtons = {
+      interact: false,
+      jump: false,
+      drop: false,
+      rise: false,
+      explode: false,
+    };
   }
 
   /**
@@ -62,6 +67,7 @@ export class XRController {
         inputOptions: {
           doNotLoadControllerMeshes: false,
         },
+        optionalFeatures: true,
       });
 
       const base = this.xrHelper.baseExperience;
@@ -92,7 +98,6 @@ export class XRController {
         controller.inputSource?.handedness
       );
 
-      // Immediate visible grip; replaced if the official model loads
       this._ensureFallbackGrip(controller);
 
       controller.onMotionControllerInitObservable.add((motionController) => {
@@ -138,7 +143,6 @@ export class XRController {
     }
 
     this._fallbackGrips.set(id, grip);
-    console.info('[XRController] Fallback grip mesh created for', id);
   }
 
   _disposeFallbackGrip(id) {
@@ -150,25 +154,122 @@ export class XRController {
   }
 
   /**
-   * @returns {{ moveX: number, moveZ: number, turnX: number, interact: boolean }}
+   * Prefer right grip/pointer for held objects; else any controller.
+   * @returns {import('@babylonjs/core').TransformNode|null}
    */
-  getThumbstickAxes() {
-    const empty = { moveX: 0, moveZ: 0, turnX: 0, interact: false };
-    if (!this.isInXR || !this.xrHelper) return empty;
+  getPrimaryHandNode() {
+    if (!this.isInXR || !this.xrHelper) return null;
+    const controllers = this.xrHelper.input?.controllers ?? [];
+    const right = controllers.find((c) => c.inputSource?.handedness === 'right');
+    const left = controllers.find((c) => c.inputSource?.handedness === 'left');
+    const pick = right || left || controllers[0];
+    if (!pick) return null;
+    return pick.grip || pick.pointer || null;
+  }
+
+  /**
+   * World-space ray from preferred pointing controller.
+   * @returns {{ origin: Vector3, direction: Vector3, controller: object }|null}
+   */
+  getPointerRay() {
+    if (!this.isInXR || !this.xrHelper) return null;
+    const controllers = this.xrHelper.input?.controllers ?? [];
+    const ordered = [
+      ...controllers.filter((c) => c.inputSource?.handedness === 'right'),
+      ...controllers.filter((c) => c.inputSource?.handedness === 'left'),
+      ...controllers,
+    ];
+    for (const ctrl of ordered) {
+      // Babylon WebXRInputSource helper when available
+      if (typeof ctrl.getWorldPointerRayToRef === 'function') {
+        const ray = new Ray(Vector3.Zero(), Vector3.Forward(), 1);
+        ctrl.getWorldPointerRayToRef(ray);
+        return {
+          origin: ray.origin.clone(),
+          direction: ray.direction.clone().normalize(),
+          controller: ctrl,
+        };
+      }
+      const pointer = ctrl.pointer;
+      if (!pointer) continue;
+      const origin = pointer.getAbsolutePosition().clone();
+      // Controllers typically aim along local -Z
+      let direction = pointer.getDirection
+        ? pointer.getDirection(Axis.Z).scale(-1)
+        : new Vector3(0, 0, -1);
+      if (direction.lengthSquared() < 1e-6) {
+        direction = new Vector3(0, 0, -1);
+      } else {
+        direction.normalize();
+      }
+      return { origin, direction, controller: ctrl };
+    }
+    return null;
+  }
+
+  /**
+   * @param {number} [maxDistance]
+   * @returns {import('@babylonjs/core').PickingInfo|null}
+   */
+  pickWithPointer(maxDistance = 12) {
+    const rayInfo = this.getPointerRay();
+    if (!rayInfo) return null;
+    const ray = new Ray(rayInfo.origin, rayInfo.direction, maxDistance);
+    return this.scene.pickWithRay(ray) || null;
+  }
+
+  /**
+   * Lift/lower XR rig so locomotion feet sit on platforms / jump arcs.
+   * @param {number} feetY world Y of player feet
+   */
+  setRigFeetY(feetY) {
+    if (!this.isInXR || !this.xrHelper) return;
+    const cam = this.xrHelper.baseExperience.camera;
+    const parent = cam?.cameraRigParent;
+    if (parent) {
+      parent.position.y = feetY;
+    }
+  }
+
+  _componentPressed(mc, ids) {
+    if (!mc) return false;
+    for (const id of ids) {
+      const c = mc.getComponent(id);
+      if (c && (c.pressed || (c.value ?? 0) > 0.65)) return true;
+    }
+    return false;
+  }
+
+  _gamepadButton(gp, index) {
+    const b = gp?.buttons?.[index];
+    return !!(b && (b.pressed || (b.value ?? 0) > 0.65));
+  }
+
+  /**
+   * Raw held state from controllers (before edge).
+   */
+  _readButtonsHeld() {
+    const out = {
+      moveX: 0,
+      moveZ: 0,
+      turnX: 0,
+      interact: false,
+      jump: false,
+      drop: false,
+      rise: false,
+      explode: false,
+    };
+    if (!this.isInXR || !this.xrHelper) return out;
 
     const controllers = this.xrHelper.input?.controllers ?? [];
-    let moveX = 0;
-    let moveZ = 0;
-    let turnX = 0;
-    let interact = false;
-
     for (const ctrl of controllers) {
       const handed = ctrl.inputSource?.handedness;
+      const mc = ctrl.motionController;
+      const gp = ctrl.inputSource?.gamepad;
       let ax = 0;
       let ay = 0;
       let got = false;
 
-      const mc = ctrl.motionController;
       if (mc) {
         const stick =
           mc.getComponent('xr-standard-thumbstick') ||
@@ -179,21 +280,68 @@ export class XRController {
           ax = stick.axes?.x ?? 0;
           ay = stick.axes?.y ?? 0;
           got = true;
+          if (stick.pressed) out.jump = true;
         }
 
-        const trigger =
-          mc.getComponent('xr-standard-trigger') || mc.getComponent('trigger');
-        if (trigger && (trigger.pressed || (trigger.value ?? 0) > 0.65)) {
-          interact = true;
+        if (
+          this._componentPressed(mc, [
+            'xr-standard-trigger',
+            'trigger',
+          ])
+        ) {
+          out.interact = true;
         }
-        const squeeze =
-          mc.getComponent('xr-standard-squeeze') || mc.getComponent('squeeze');
-        if (squeeze && (squeeze.pressed || (squeeze.value ?? 0) > 0.65)) {
-          interact = true;
+        if (
+          this._componentPressed(mc, [
+            'xr-standard-squeeze',
+            'squeeze',
+          ])
+        ) {
+          out.drop = true;
+        }
+
+        // Quest: A/X jump or rise; B/Y drop or explode
+        if (handed === 'right') {
+          if (
+            this._componentPressed(mc, [
+              'a-button',
+              'xr-standard-button-a',
+              'button-a',
+            ])
+          ) {
+            out.jump = true;
+          }
+          if (
+            this._componentPressed(mc, [
+              'b-button',
+              'xr-standard-button-b',
+              'button-b',
+            ])
+          ) {
+            out.drop = true;
+          }
+        } else {
+          if (
+            this._componentPressed(mc, [
+              'x-button',
+              'xr-standard-button-x',
+              'button-x',
+            ])
+          ) {
+            out.explode = true;
+          }
+          if (
+            this._componentPressed(mc, [
+              'y-button',
+              'xr-standard-button-y',
+              'button-y',
+            ])
+          ) {
+            out.rise = true;
+          }
         }
       }
 
-      const gp = ctrl.inputSource?.gamepad;
       if (gp?.axes?.length) {
         if (gp.axes.length >= 4) {
           const gx = gp.axes[2] ?? 0;
@@ -208,29 +356,84 @@ export class XRController {
           ay = gp.axes[1] ?? 0;
           got = true;
         }
+        // Common Quest layout: 0 trigger, 1 squeeze, 3 stick click, 4 A/X, 5 B/Y
+        if (this._gamepadButton(gp, 0)) out.interact = true;
+        if (this._gamepadButton(gp, 1)) out.drop = true;
+        if (this._gamepadButton(gp, 3)) out.jump = true;
+        if (handed === 'right') {
+          if (this._gamepadButton(gp, 4)) out.jump = true;
+          if (this._gamepadButton(gp, 5)) out.drop = true;
+        } else {
+          if (this._gamepadButton(gp, 4)) out.explode = true;
+          if (this._gamepadButton(gp, 5)) out.rise = true;
+        }
       }
 
-      if (!got) continue;
-
-      if (handed === 'right') {
-        turnX += ax;
-      } else {
-        moveX += ax;
-        moveZ += -ay;
+      if (got) {
+        if (handed === 'right') {
+          out.turnX += ax;
+        } else {
+          out.moveX += ax;
+          out.moveZ += -ay;
+        }
       }
     }
 
-    return { moveX, moveZ, turnX, interact };
+    return out;
   }
 
   /**
-   * Apply stick locomotion to the XR camera every frame while in VR.
+   * @returns {{
+   *   moveX: number, moveZ: number, turnX: number,
+   *   interact: boolean, interactHeld: boolean,
+   *   jump: boolean, drop: boolean, rise: boolean, explode: boolean,
+   * }}
+   */
+  getMoveState() {
+    const held = this._readButtonsHeld();
+    const dead = 0.18;
+    const edge = (key, now) => {
+      const was = this._prevButtons[key];
+      this._prevButtons[key] = now;
+      return now && !was;
+    };
+
+    return {
+      forward: held.moveZ > dead,
+      backward: held.moveZ < -dead,
+      left: held.moveX < -dead,
+      right: held.moveX > dead,
+      moveX: held.moveX,
+      moveZ: held.moveZ,
+      turnX: held.turnX,
+      interactHeld: held.interact,
+      interact: edge('interact', held.interact),
+      jump: edge('jump', held.jump),
+      drop: edge('drop', held.drop),
+      rise: edge('rise', held.rise),
+      explode: edge('explode', held.explode),
+    };
+  }
+
+  /** @deprecated use getMoveState axes */
+  getThumbstickAxes() {
+    const s = this.getMoveState();
+    return {
+      moveX: s.moveX,
+      moveZ: s.moveZ,
+      turnX: s.turnX,
+      interact: s.interactHeld,
+    };
+  }
+
+  /**
+   * Apply stick locomotion (XZ + yaw) to the XR camera rig.
    * @param {number} delta seconds
    */
   update(delta) {
     if (!this.isInXR || !this.xrHelper) return;
 
-    const axes = this.getThumbstickAxes();
+    const axes = this._readButtonsHeld();
     const dead = 0.18;
     const speed = this.options.movementSpeed ?? 2.8;
     const turnSpeed = this.options.rotationSpeed ?? 1.6;
@@ -243,7 +446,6 @@ export class XRController {
     const tx = Math.abs(axes.turnX) > dead ? axes.turnX : 0;
 
     if (mx !== 0 || mz !== 0) {
-      // Prefer ray forward (works for WebXRCamera on Quest)
       let forward = cam.getForwardRay?.(1)?.direction?.clone?.();
       if (!forward) {
         forward = cam.getDirection(Axis.Z);
@@ -259,18 +461,16 @@ export class XRController {
       const step = speed * delta;
       const offset = right.scale(mx * step).add(forward.scale(mz * step));
 
-      // Must move the rig parent; XR overwrites camera.position from headset pose
       const parent = cam.cameraRigParent;
       if (parent) {
-        parent.position.addInPlace(offset);
+        parent.position.x += offset.x;
+        parent.position.z += offset.z;
       } else {
         cam.position.addInPlace(offset);
-        console.warn('[XRController] No cameraRigParent — locomotion may reset');
       }
     }
 
     if (tx !== 0) {
-      // Rotate the rig parent — headset pose overwrites camera.rotation each frame
       const yaw = tx * turnSpeed * delta;
       const parent = cam.cameraRigParent;
       const target = parent || cam;
@@ -293,22 +493,6 @@ export class XRController {
     return { x: cam.position.x, y: cam.position.y, z: cam.position.z };
   }
 
-  getMoveState() {
-    const axes = this.getThumbstickAxes();
-    const dead = 0.18;
-    return {
-      forward: axes.moveZ > dead,
-      backward: axes.moveZ < -dead,
-      left: axes.moveX < -dead,
-      right: axes.moveX > dead,
-      interact: axes.interact,
-      drop: false,
-      moveX: axes.moveX,
-      moveZ: axes.moveZ,
-    };
-  }
-
-  /** Manual XR camera locomotion is always used. */
   usesNativeMovement() {
     return false;
   }

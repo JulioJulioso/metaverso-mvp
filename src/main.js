@@ -18,6 +18,7 @@ import { PickingSystem } from './systems/PickingSystem.js';
 import { NetworkStub } from './systems/NetworkStub.js';
 import { isNearXZ } from './systems/CollisionSystem.js';
 import { HUD } from './ui/HUD.js';
+import { XRHud } from './ui/XRHud.js';
 import { BUILD_INFO } from './config/buildInfo.js';
 
 import '@babylonjs/loaders/glTF';
@@ -70,10 +71,18 @@ async function boot() {
   const circuit = new CircuitSystem(levelConfig.circuitSteps);
   /** @type {import('./ui/HUD.js').HUD|null} */
   let hudRef = null;
+  /** @type {import('./ui/XRHud.js').XRHud|null} */
+  let xrHudRef = null;
+
+  function notify(msg, ms) {
+    hudRef?.showMessage(msg, ms);
+    xrHudRef?.showMessage(msg, ms);
+  }
+
   const achievements = new AchievementSystem(coins.length, {
     onAllCollected: () => {
       circuit.complete('coins_all', '¡Todos los marcadores recogidos!');
-      hudRef?.showMessage(
+      notify(
         'Ahora lleva la pelota a los sitios 1 → 2 → 3 (oeste, postes con anillo)'
       );
     },
@@ -88,13 +97,14 @@ async function boot() {
   function triggerRiseWalls() {
     if (walls.startRise()) {
       hudRef?.markRiseStarted();
-      hudRef?.showMessage('Levantamiento de muros en curso…');
+      xrHudRef?.markRiseStarted();
+      notify('Levantamiento de muros en curso…');
       return true;
     }
     if (walls.isRiseDone()) {
-      hudRef?.showMessage('Los muros ya están levantados');
+      notify('Los muros ya están levantados');
     } else if (walls.isRiseStarted()) {
-      hudRef?.showMessage('Levantamiento ya en curso…');
+      notify('Levantamiento ya en curso…');
     }
     return false;
   }
@@ -103,7 +113,7 @@ async function boot() {
     const started = walls.toggleExplode();
     if (started) {
       const opening = walls.getExplodeTarget() > 0.5;
-      hudRef?.showMessage(
+      notify(
         opening ? 'Despiece de muros (visión explotada)' : 'Muros reensamblados'
       );
       if (opening) {
@@ -111,8 +121,20 @@ async function boot() {
       }
       return true;
     }
-    hudRef?.showMessage('Primero levanta los muros (botón o R)');
+    notify('Primero levanta los muros (botón / Y)');
     return false;
+  }
+
+  function openMediaPlayback() {
+    media.playInWorld();
+    if (xr.isInXR) {
+      notify(`Video: ${media.getTitle()} (pantalla activa en VR)`, 3500);
+    } else {
+      hudRef?.openVideo({
+        url: media.getEmbedUrl(true),
+        title: media.getTitle(),
+      });
+    }
   }
 
   const hud = new HUD(
@@ -129,12 +151,38 @@ async function boot() {
   );
   hudRef = hud;
   console.info('[boot] build', BUILD_INFO.label);
+
+  const xrHud = new XRHud(scene, {
+    versionLabel: BUILD_INFO.label,
+    onRiseWalls: () => triggerRiseWalls(),
+    onExplodeWalls: () => triggerExplodeWalls(),
+  });
+  xrHudRef = xrHud;
+
   hud.updateCoins(achievements.getState());
-  achievements.onChange((state) => hud.updateCoins(state));
-  circuit.onChange((snap) => hud.updateCircuit(snap));
+  xrHud.updateCoins(achievements.getState());
+  achievements.onChange((state) => {
+    hud.updateCoins(state);
+    xrHud.updateCoins(state);
+  });
+  circuit.onChange((snap) => {
+    hud.updateCircuit(snap);
+    xrHud.updateCircuit(snap);
+  });
 
   xr.onSessionChange((active) => {
     cameraRig.setEnabled(!active);
+    xrHud.setVisible(active);
+    hudRoot.style.visibility = active ? 'hidden' : 'visible';
+    player.mesh.isVisible = !active;
+    if (active) {
+      xrHud.updateCircuit(circuit.getSnapshot());
+      xrHud.updateCoins(achievements.getState());
+      notify(
+        'VR: checklist izq · Y levantar · X despiece · A saltar · gatillo tomar/video',
+        4500
+      );
+    }
   });
 
   for (const coin of coins) {
@@ -157,8 +205,13 @@ async function boot() {
     autoCollect: false,
     enabled: () => !sphere.isHeld(),
     onInteract: () => {
-      if (player.pickUp(sphere)) {
-        hud.showMessage('Pelota recogida — llévala a los sitios (F soltar)');
+      const hand = xr.isInXR ? xr.getPrimaryHandNode() : null;
+      if (player.pickUp(sphere, hand)) {
+        notify(
+          xr.isInXR
+            ? 'Pelota en la mano — grip/B para soltar'
+            : 'Pelota recogida — llévala a los sitios (F soltar)'
+        );
       }
     },
   });
@@ -168,21 +221,13 @@ async function boot() {
   new PickingSystem(scene, camera, canvas, bimIndex, (info) => {
     if (!info?.element && !info?.meshName) return;
 
-    // Click on 3D media unit → open YouTube overlay
     if (info.element?.entity === 'media' || info.element?.isMediaScreen) {
-      hud.openVideo({
-        url: media.getEmbedUrl(true),
-        title: media.getTitle(),
-      });
+      openMediaPlayback();
       return;
     }
 
-    // Fallback: inspect mesh name from raw pick via bim / label
     if (info.meshName && media.isScreenMesh({ metadata: info.element })) {
-      hud.openVideo({
-        url: media.getEmbedUrl(true),
-        title: media.getTitle(),
-      });
+      openMediaPlayback();
       return;
     }
 
@@ -193,7 +238,7 @@ async function boot() {
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ')
       : '';
-    hud.showMessage(
+    notify(
       `${el.name || el.globalId}${el.category ? ` · ${el.category}` : ''}${
         props ? ` · ${props}` : ''
       }`,
@@ -213,15 +258,16 @@ async function boot() {
         moveX: xrMove.moveX ?? 0,
         moveZ: xrMove.moveZ ?? 0,
         interact: xrMove.interact || desktop.interact,
-        drop: desktop.drop,
-        jump: desktop.jump,
-        explode: desktop.explode,
+        drop: xrMove.drop || desktop.drop,
+        jump: xrMove.jump || desktop.jump,
+        rise: xrMove.rise,
+        explode: xrMove.explode || desktop.explode,
         lookDeltaX: 0,
         lookDeltaY: 0,
-        skipHorizontal: false,
+        skipHorizontal: true,
       };
     }
-    return { ...desktop, skipHorizontal: false };
+    return { ...desktop, rise: false, skipHorizontal: false };
   }
 
   function tryDeliveries() {
@@ -237,15 +283,23 @@ async function boot() {
       circuit.complete(stepId, `${zone.label} completado`);
       nextZoneIndex += 1;
       if (nextZoneIndex < zones.length) {
-        hud.showMessage(`Siguiente: ${zones[nextZoneIndex].label}`);
+        notify(`Siguiente: ${zones[nextZoneIndex].label}`);
       }
+    }
+  }
+
+  function tryXrMediaPick(interactEdge) {
+    if (!interactEdge || !xr.isInXR) return;
+    const hit = xr.pickWithPointer(14);
+    const mesh = hit?.pickedMesh;
+    if (mesh && media.isScreenMesh(mesh)) {
+      openMediaPlayback();
     }
   }
 
   sceneManager.setUpdateCallback((delta) => {
     const state = resolveInput();
 
-    // XR camera locomotion (thumbsticks) — isolated in XRController.update
     if (xr.isInXR) {
       xr.update(delta);
     }
@@ -254,44 +308,47 @@ async function boot() {
       cameraRig.addLook(state.lookDeltaX, state.lookDeltaY);
     }
 
-    const playerPosEarly = player.getPosition();
-    const nearWalls = isNearXZ(
-      playerPosEarly,
-      walls.getInteractionPoint(),
-      levelConfig.walls.promptRadius ?? 5.5
-    );
-    hud.setWallActionsVisible(nearWalls);
-
-    if (nearWalls && state.explode) {
-      triggerExplodeWalls();
-    }
-
-    if (state.drop && player.heldObject) {
-      player.drop();
-      hud.showMessage('Pelota soltada — cae al suelo');
-    }
-
-    // In XR: camera moves via xr.update; keep capsule under headset for interactions
+    // XR: capsule XZ under headset; Y from jump/platform physics (not headset)
     if (xr.isInXR) {
       const viewer = xr.getViewerPosition();
       if (viewer) {
-        player.setWorldPosition({
-          x: viewer.x,
-          y: viewer.y - levelConfig.player.height * 0.35,
-          z: viewer.z,
-        });
+        player.setWorldXZ(viewer.x, viewer.z);
       }
       player.update(delta, {
         ...state,
         skipHorizontal: true,
         faceYaw: 0,
       });
+      xr.setRigFeetY(player.getFeetY());
     } else {
       player.update(delta, {
         ...state,
         faceYaw: cameraRig.getFaceYaw(),
       });
     }
+
+    const playerPos = player.getPosition();
+    const nearWalls = isNearXZ(
+      playerPos,
+      walls.getInteractionPoint(),
+      levelConfig.walls.promptRadius ?? 5.5
+    );
+    hud.setWallActionsVisible(nearWalls);
+    xrHud.setWallActionsVisible(nearWalls);
+
+    if (nearWalls && state.rise) {
+      triggerRiseWalls();
+    }
+    if (nearWalls && state.explode) {
+      triggerExplodeWalls();
+    }
+
+    if (state.drop && player.heldObject) {
+      player.drop();
+      notify('Pelota soltada — cae al suelo');
+    }
+
+    tryXrMediaPick(state.interact);
 
     sphere.update(delta);
 
@@ -304,9 +361,10 @@ async function boot() {
     if (walls.update(delta)) {
       circuit.complete('walls_rise', 'Levantamiento de muros finalizado');
       hud.markRiseDone();
+      xrHud.markRiseDone();
     }
 
-    interactions.update(player.getPosition(), { interact: state.interact });
+    interactions.update(playerPos, { interact: state.interact });
 
     tryDeliveries();
 

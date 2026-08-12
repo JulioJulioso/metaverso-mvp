@@ -131,6 +131,24 @@ export class MediaScreen {
     return !!(mesh?.metadata?.isMediaScreen);
   }
 
+  /** Visual "playing" feedback for XR (DOM YouTube is not visible in immersive-vr). */
+  playInWorld() {
+    const mat = this.mesh.material;
+    if (mat) {
+      mat.emissiveColor = new Color3(0.35, 0.55, 0.95);
+      mat.albedoColor = new Color3(0.12, 0.18, 0.28);
+    }
+    const playMat = this.playIcon.material;
+    if (playMat) {
+      playMat.emissiveColor = new Color3(0.9, 0.95, 1.0);
+    }
+    this._playing = true;
+  }
+
+  isPlaying() {
+    return !!this._playing;
+  }
+
   dispose() {
     this.playIcon.dispose();
     this.mesh.dispose();

@@ -78,13 +78,25 @@ export class Player {
   }
 
   /**
-   * Snap body to a world position (used to follow XR camera when in VR).
-   * @param {{ x:number, y:number, z:number }} worldPos center of capsule
+   * Snap body XZ (and optional Y) — XR syncs feet height via physics, not headset Y.
+   * @param {{ x:number, y?:number, z:number }} worldPos
+   * @param {{ syncY?: boolean }} [opts]
    */
-  setWorldPosition(worldPos) {
+  setWorldPosition(worldPos, opts = {}) {
     this.root.position.x = worldPos.x;
-    this.root.position.y = worldPos.y;
     this.root.position.z = worldPos.z;
+    if (opts.syncY !== false && worldPos.y != null) {
+      this.root.position.y = worldPos.y;
+    }
+  }
+
+  /**
+   * @param {number} x
+   * @param {number} z
+   */
+  setWorldXZ(x, z) {
+    this.root.position.x = x;
+    this.root.position.z = z;
   }
 
   /**
@@ -197,11 +209,17 @@ export class Player {
 
   /**
    * @param {{ mesh: import('@babylonjs/core').Mesh, setHeld: (v: boolean) => void }} object
+   * @param {import('@babylonjs/core').TransformNode|null} [attachNode] XR grip/pointer; defaults to body hand
    */
-  pickUp(object) {
+  pickUp(object, attachNode = null) {
     if (this.heldObject) return false;
-    object.mesh.setParent(this.hand);
+    const parent = attachNode || this.hand;
+    object.mesh.setParent(parent);
     object.mesh.position = Vector3.Zero();
+    if (attachNode) {
+      // Slight forward offset so ball sits ahead of the grip
+      object.mesh.position = new Vector3(0, 0, 0.08);
+    }
     object.setHeld(true);
     this.heldObject = object;
     return true;
