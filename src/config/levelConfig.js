@@ -123,6 +123,8 @@ export const levelConfig = {
     riseDuration: 4.5,
     explodeDistance: 1.15,
     explodeDuration: 1.4,
+    /** Distance to show wall interaction UI (meters) */
+    promptRadius: 5.5,
   },
 
   video: {
@@ -133,8 +135,8 @@ export const levelConfig = {
   },
 
   circuitSteps: [
-    { id: 'walls_rise', label: 'Levantar muros (botón en HUD o tecla R)' },
-    { id: 'walls_explode', label: 'Activar visión explotada de muros (X o botón)' },
+    { id: 'walls_rise', label: 'Levantar muros (acércate y usa el botón)' },
+    { id: 'walls_explode', label: 'Activar visión explotada (cerca de muros)' },
     { id: 'coins_all', label: 'Recoger todos los marcadores del recorrido' },
     { id: 'jump_high', label: 'Alcanzar plataforma alta (salto)' },
     { id: 'ball_zone_1', label: 'Llevar la pelota al sitio 1' },

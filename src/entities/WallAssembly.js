@@ -97,6 +97,15 @@ export class WallAssembly {
     return this.riseDone;
   }
 
+  /** World-space point used for proximity prompts (assembly center). */
+  getInteractionPoint() {
+    return {
+      x: this.root.position.x,
+      y: this.root.position.y,
+      z: this.root.position.z,
+    };
+  }
+
   /** @returns {boolean} true when rise fully complete this frame */
   update(delta) {
     let justFinishedRise = false;

@@ -1,5 +1,6 @@
 /**
- * Keyboard + mouse look (hold right mouse or middle mouse to orbit camera).
+ * Keyboard + mouse look.
+ * Q/E = yaw, R = pick/interact, F = drop, Space = jump, X = wall explode (when near).
  */
 export class InputController {
   /**
@@ -12,7 +13,6 @@ export class InputController {
     this._dropPressed = false;
     this._jumpPressed = false;
     this._explodePressed = false;
-    this._risePressed = false;
 
     this._lookActive = false;
     this._lookDx = 0;
@@ -21,7 +21,7 @@ export class InputController {
 
     this._onKeyDown = (e) => {
       this._keys.add(e.code);
-      if (e.code === 'KeyE') {
+      if (e.code === 'KeyR') {
         if (!e.repeat) this._interactPressed = true;
         e.preventDefault();
       }
@@ -35,10 +35,6 @@ export class InputController {
       }
       if (e.code === 'KeyX') {
         if (!e.repeat) this._explodePressed = true;
-        e.preventDefault();
-      }
-      if (e.code === 'KeyR') {
-        if (!e.repeat) this._risePressed = true;
         e.preventDefault();
       }
     };
@@ -98,7 +94,6 @@ export class InputController {
     const right =
       this._keys.has('KeyD') || this._keys.has('ArrowRight');
 
-    // Keyboard orbit while holding Shift + arrows
     let keyYaw = 0;
     let keyPitch = 0;
     if (this._keys.has('ShiftLeft') || this._keys.has('ShiftRight')) {
@@ -107,15 +102,14 @@ export class InputController {
       if (this._keys.has('ArrowUp')) keyPitch -= 0.03;
       if (this._keys.has('ArrowDown')) keyPitch += 0.03;
     }
-    // Q / ; for orbit without mouse
+    // Industry-ish FPS: Q / E yaw
     if (this._keys.has('KeyQ')) keyYaw -= 0.04;
-    if (this._keys.has('Semicolon') || this._keys.has('KeyV')) keyYaw += 0.04;
+    if (this._keys.has('KeyE')) keyYaw += 0.04;
 
     const interact = this._interactPressed;
     const drop = this._dropPressed;
     const jump = this._jumpPressed;
     const explode = this._explodePressed;
-    const riseWalls = this._risePressed;
     const lookDeltaX = this._lookDx + keyYaw;
     const lookDeltaY = this._lookDy + keyPitch;
 
@@ -123,7 +117,6 @@ export class InputController {
     this._dropPressed = false;
     this._jumpPressed = false;
     this._explodePressed = false;
-    this._risePressed = false;
     this._lookDx = 0;
     this._lookDy = 0;
 
@@ -136,7 +129,6 @@ export class InputController {
       drop,
       jump,
       explode,
-      riseWalls,
       lookDeltaX,
       lookDeltaY,
     };

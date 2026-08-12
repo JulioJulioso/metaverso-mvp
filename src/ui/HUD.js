@@ -21,12 +21,13 @@ export class HUD {
       '<div><strong>Marcadores:</strong> <span data-coins>0 / 0</span></div>';
 
     this.actions = document.createElement('div');
-    this.actions.className = 'hud-actions';
+    this.actions.className = 'hud-actions hud-actions--hidden';
+    this.actions.setAttribute('aria-hidden', 'true');
     this.actions.innerHTML = `
-      <div class="hud-panel-title">Animaciones</div>
+      <div class="hud-panel-title">Interacción — muros</div>
       <button type="button" class="hud-btn" data-rise>Levantar muros</button>
-      <button type="button" class="hud-btn hud-btn-secondary" data-explode disabled>Visión explotada (X)</button>
-      <p class="hud-actions-hint">También: <kbd>R</kbd> levantar · <kbd>X</kbd> despiece</p>
+      <button type="button" class="hud-btn hud-btn-secondary" data-explode disabled>Visión explotada</button>
+      <p class="hud-actions-hint">Acércate a los muros · <kbd>X</kbd> despiece cuando esté disponible</p>
     `;
 
     this.circuit = document.createElement('div');
@@ -77,7 +78,7 @@ export class HUD {
     this.hints = document.createElement('div');
     this.hints.className = 'hud-hints';
     this.hints.innerHTML =
-      '<kbd>WASD</kbd> mover · <kbd>clic der.</kbd> orbitar cámara · <kbd>Q</kbd>/<kbd>V</kbd> girar · <kbd>Espacio</kbd> saltar · <kbd>E</kbd> recoger · clic pantalla 3D = video';
+      '<kbd>WASD</kbd> mover · <kbd>Q</kbd>/<kbd>E</kbd> girar · <kbd>clic der.</kbd> orbitar · <kbd>R</kbd> tomar · <kbd>F</kbd> soltar · cerca de muros = botones · clic pantalla = video';
 
     this.root.append(
       this.panel,
@@ -155,6 +156,15 @@ export class HUD {
 
   setExplodeButtonEnabled(enabled) {
     if (this._explodeBtn) this._explodeBtn.disabled = !enabled;
+  }
+
+  /**
+   * Proximity UI: show wall animation controls only when near the assembly.
+   * @param {boolean} visible
+   */
+  setWallActionsVisible(visible) {
+    this.actions.classList.toggle('hud-actions--hidden', !visible);
+    this.actions.setAttribute('aria-hidden', visible ? 'false' : 'true');
   }
 
   markRiseStarted() {

@@ -16,6 +16,7 @@ import { CameraRigSystem } from './systems/CameraRigSystem.js';
 import { BimIndexStub } from './systems/BimIndexStub.js';
 import { PickingSystem } from './systems/PickingSystem.js';
 import { NetworkStub } from './systems/NetworkStub.js';
+import { isNearXZ } from './systems/CollisionSystem.js';
 import { HUD } from './ui/HUD.js';
 
 import '@babylonjs/loaders/glTF';
@@ -153,7 +154,7 @@ async function boot() {
     enabled: () => !sphere.isHeld(),
     onInteract: () => {
       if (player.pickUp(sphere)) {
-        hud.showMessage('Pelota recogida — llévala a los sitios de entrega (F soltar)');
+        hud.showMessage('Pelota recogida — llévala a los sitios (F soltar)');
       }
     },
   });
@@ -211,10 +212,8 @@ async function boot() {
         drop: desktop.drop,
         jump: desktop.jump,
         explode: desktop.explode,
-        riseWalls: desktop.riseWalls,
         lookDeltaX: 0,
         lookDeltaY: 0,
-        // When Babylon MOVEMENT drives the XR camera, don't also translate Player via sticks
         skipHorizontal: xr.usesNativeMovement(),
       };
     }
@@ -246,11 +245,16 @@ async function boot() {
       cameraRig.addLook(state.lookDeltaX, state.lookDeltaY);
     }
 
-    if (state.riseWalls) {
-      triggerRiseWalls();
-    }
+    const playerPos = player.getPosition();
+    const nearWalls = isNearXZ(
+      playerPos,
+      walls.getInteractionPoint(),
+      levelConfig.walls.promptRadius ?? 5.5
+    );
+    hud.setWallActionsVisible(nearWalls);
 
-    if (state.explode) {
+    // Wall actions only while in proximity (contextual UI)
+    if (nearWalls && state.explode) {
       triggerExplodeWalls();
     }
 
@@ -289,13 +293,12 @@ async function boot() {
       hud.markRiseDone();
     }
 
-    const playerPos = player.getPosition();
-    interactions.update(playerPos, { interact: state.interact });
+    interactions.update(player.getPosition(), { interact: state.interact });
 
     tryDeliveries();
 
     if (!xr.isInXR) {
-      cameraRig.update(delta, playerPos);
+      cameraRig.update(delta, player.getPosition());
     }
   });
 
