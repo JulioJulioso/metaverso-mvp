@@ -1,4 +1,10 @@
 import {
+  MeshBuilder,
+  Vector3,
+  StandardMaterial,
+  Color3,
+} from '@babylonjs/core';
+import {
   AdvancedDynamicTexture,
   Rectangle,
   TextBlock,
@@ -9,8 +15,7 @@ import {
 } from '@babylonjs/gui';
 
 /**
- * In-XR HUD (DOM overlays are invisible in immersive-vr).
- * Mirrors checklist, wall actions, toasts, and build version.
+ * In-XR HUD on a plane ~2m in front of the headset (not fullscreen near-plane).
  */
 export class XRHud {
   /**
@@ -22,90 +27,96 @@ export class XRHud {
    * }} [opts]
    */
   constructor(scene, opts = {}) {
+    this.scene = scene;
     this._opts = opts;
     this._visible = false;
     this._nearWalls = false;
     this._toastTimer = null;
+    this._cam = null;
 
-    this.ui = AdvancedDynamicTexture.CreateFullscreenUI('xrHudUI', true, scene);
-    this.ui.idealWidth = 1200;
+    // World panel sized for readable text at ~2m
+    this.plane = MeshBuilder.CreatePlane(
+      'xrHudPlane',
+      { width: 1.35, height: 0.95 },
+      scene
+    );
+    this.plane.isPickable = true;
+    this.plane.isVisible = false;
+    this.plane.renderingGroupId = 1;
+
+    const mat = new StandardMaterial('xrHudPlaneMat', scene);
+    mat.emissiveColor = new Color3(0.02, 0.02, 0.03);
+    mat.disableLighting = true;
+    mat.backFaceCulling = false;
+    this.plane.material = mat;
+
+    this.ui = AdvancedDynamicTexture.CreateForMesh(
+      this.plane,
+      1024,
+      720,
+      false
+    );
 
     this.root = new Rectangle('xrHudRoot');
     this.root.width = 1;
     this.root.height = 1;
     this.root.thickness = 0;
-    this.root.background = 'transparent';
-    this.root.isVisible = false;
+    this.root.background = 'rgba(6,8,10,0.82)';
+    this.root.cornerRadius = 24;
     this.ui.addControl(this.root);
-
-    // Checklist panel (left)
-    this.circuitPanel = new Rectangle('xrCircuit');
-    this.circuitPanel.width = '360px';
-    this.circuitPanel.height = '420px';
-    this.circuitPanel.cornerRadius = 10;
-    this.circuitPanel.thickness = 1;
-    this.circuitPanel.color = 'rgba(255,255,255,0.2)';
-    this.circuitPanel.background = 'rgba(8,10,12,0.72)';
-    this.circuitPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    this.circuitPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.circuitPanel.left = '24px';
-    this.circuitPanel.top = '24px';
-    this.circuitPanel.paddingTop = '12px';
-    this.circuitPanel.paddingLeft = '12px';
-    this.circuitPanel.paddingRight = '12px';
-    this.circuitPanel.paddingBottom = '12px';
-    this.root.addControl(this.circuitPanel);
 
     const circuitStack = new StackPanel('xrCircuitStack');
     circuitStack.isVertical = true;
-    circuitStack.width = 1;
-    this.circuitPanel.addControl(circuitStack);
+    circuitStack.width = 0.92;
+    circuitStack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    circuitStack.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    circuitStack.top = '18px';
+    this.root.addControl(circuitStack);
 
     this.circuitTitle = new TextBlock('xrCircuitTitle');
     this.circuitTitle.text = 'Circuito';
     this.circuitTitle.color = 'white';
-    this.circuitTitle.fontSize = 22;
-    this.circuitTitle.height = '32px';
+    this.circuitTitle.fontSize = 36;
+    this.circuitTitle.height = '48px';
+    this.circuitTitle.fontWeight = 'bold';
     this.circuitTitle.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     circuitStack.addControl(this.circuitTitle);
 
     this.coinsText = new TextBlock('xrCoins');
     this.coinsText.text = 'Marcadores: 0 / 0';
-    this.coinsText.color = 'rgba(220,230,240,0.9)';
-    this.coinsText.fontSize = 16;
-    this.coinsText.height = '28px';
+    this.coinsText.color = 'rgba(220,230,240,0.95)';
+    this.coinsText.fontSize = 28;
+    this.coinsText.height = '40px';
     this.coinsText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     circuitStack.addControl(this.coinsText);
 
     const scroll = new ScrollViewer('xrStepsScroll');
     scroll.width = 1;
-    scroll.height = '320px';
+    scroll.height = '380px';
     scroll.thickness = 0;
-    scroll.barColor = 'rgba(255,255,255,0.25)';
+    scroll.barColor = 'rgba(255,255,255,0.3)';
     circuitStack.addControl(scroll);
 
     this.stepsText = new TextBlock('xrSteps');
     this.stepsText.text = '';
-    this.stepsText.color = 'rgba(230,234,238,0.92)';
-    this.stepsText.fontSize = 15;
+    this.stepsText.color = 'rgba(235,238,242,0.95)';
+    this.stepsText.fontSize = 26;
     this.stepsText.textWrapping = true;
     this.stepsText.resizeToFit = true;
+    this.stepsText.lineSpacing = '8px';
     this.stepsText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     this.stepsText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.stepsText.paddingTop = '4px';
     scroll.addControl(this.stepsText);
 
-    // Wall actions (center-bottom when near)
     this.wallPanel = new Rectangle('xrWalls');
-    this.wallPanel.width = '420px';
+    this.wallPanel.width = 0.92;
     this.wallPanel.height = '150px';
-    this.wallPanel.cornerRadius = 10;
+    this.wallPanel.cornerRadius = 12;
     this.wallPanel.thickness = 1;
-    this.wallPanel.color = 'rgba(255,255,255,0.18)';
-    this.wallPanel.background = 'rgba(8,10,12,0.78)';
-    this.wallPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    this.wallPanel.color = 'rgba(255,255,255,0.2)';
+    this.wallPanel.background = 'rgba(20,28,36,0.95)';
     this.wallPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    this.wallPanel.top = '-90px';
+    this.wallPanel.top = '-100px';
     this.wallPanel.isVisible = false;
     this.root.addControl(this.wallPanel);
 
@@ -115,82 +126,98 @@ export class XRHud {
     this.wallPanel.addControl(wallStack);
 
     const wallTitle = new TextBlock('xrWallTitle');
-    wallTitle.text = 'Muros (Y = levantar · X = despiece)';
+    wallTitle.text = 'Muros — Y levantar · X despiece';
     wallTitle.color = 'white';
-    wallTitle.fontSize = 16;
-    wallTitle.height = '28px';
+    wallTitle.fontSize = 24;
+    wallTitle.height = '36px';
     wallStack.addControl(wallTitle);
 
     this.riseBtn = Button.CreateSimpleButton('xrRise', 'Levantar muros');
-    this.riseBtn.height = '40px';
+    this.riseBtn.height = '48px';
     this.riseBtn.thickness = 0;
     this.riseBtn.color = 'white';
     this.riseBtn.background = '#2a6f97';
-    this.riseBtn.cornerRadius = 6;
-    this.riseBtn.paddingTop = '4px';
+    this.riseBtn.cornerRadius = 8;
+    this.riseBtn.fontSize = 24;
     this.riseBtn.onPointerUpObservable.add(() => this._opts.onRiseWalls?.());
     wallStack.addControl(this.riseBtn);
 
     this.explodeBtn = Button.CreateSimpleButton('xrExplode', 'Visión explotada');
-    this.explodeBtn.height = '40px';
+    this.explodeBtn.height = '48px';
     this.explodeBtn.thickness = 0;
     this.explodeBtn.color = 'white';
     this.explodeBtn.background = '#445566';
-    this.explodeBtn.cornerRadius = 6;
-    this.explodeBtn.paddingTop = '6px';
+    this.explodeBtn.cornerRadius = 8;
+    this.explodeBtn.fontSize = 24;
+    this.explodeBtn.paddingTop = '8px';
     this.explodeBtn.isEnabled = false;
     this.explodeBtn.onPointerUpObservable.add(() => this._opts.onExplodeWalls?.());
     wallStack.addControl(this.explodeBtn);
 
-    // Hints
     this.hints = new TextBlock('xrHints');
     this.hints.text =
-      'Stick izq mover · der girar · gatillo interactuar · A saltar · grip soltar · apuntar pantalla = video';
-    this.hints.color = 'rgba(220,224,230,0.75)';
-    this.hints.fontSize = 14;
-    this.hints.height = '36px';
-    this.hints.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+      'Stick izq mover · der girar · A / click stick der = SALTAR · gatillo = tomar · grip = soltar';
+    this.hints.color = 'rgba(220,224,230,0.9)';
+    this.hints.fontSize = 22;
+    this.hints.height = '56px';
+    this.hints.textWrapping = true;
     this.hints.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    this.hints.top = '-28px';
+    this.hints.top = '-18px';
     this.root.addControl(this.hints);
 
-    // Version
     this.version = new TextBlock('xrVersion');
     this.version.text = opts.versionLabel || '';
-    this.version.color = 'rgba(220,224,230,0.8)';
-    this.version.fontSize = 14;
+    this.version.color = 'rgba(200,210,220,0.85)';
+    this.version.fontSize = 20;
     this.version.height = '28px';
-    this.version.width = '280px';
     this.version.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-    this.version.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    this.version.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
     this.version.left = '-16px';
-    this.version.top = '-16px';
+    this.version.top = '12px';
     this.version.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
     this.root.addControl(this.version);
 
-    // Toast
     this.toast = new Rectangle('xrToast');
-    this.toast.width = '520px';
-    this.toast.height = '56px';
-    this.toast.cornerRadius = 8;
+    this.toast.width = 0.9;
+    this.toast.height = '64px';
+    this.toast.cornerRadius = 10;
     this.toast.thickness = 0;
-    this.toast.background = 'rgba(12,14,16,0.85)';
-    this.toast.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    this.toast.background = 'rgba(12,14,16,0.92)';
     this.toast.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.toast.top = '40px';
+    this.toast.top = '56px';
     this.toast.isVisible = false;
     this.root.addControl(this.toast);
 
     this.toastText = new TextBlock('xrToastText');
     this.toastText.color = 'white';
-    this.toastText.fontSize = 18;
+    this.toastText.fontSize = 26;
     this.toastText.textWrapping = true;
     this.toast.addControl(this.toastText);
   }
 
+  /**
+   * Parent HUD plane to XR camera at a comfortable reading distance.
+   * @param {import('@babylonjs/core').Camera|null} camera
+   */
+  attachToCamera(camera) {
+    this._cam = camera;
+    if (!camera) {
+      this.plane.parent = null;
+      return;
+    }
+    this.plane.parent = camera;
+    // In front of eyes (~2m), slightly down and left so it does not block center gaze
+    this.plane.position = new Vector3(-0.35, -0.12, 2.05);
+    // Face the user (plane default faces +Z; camera looks +Z → flip)
+    this.plane.rotation.set(0, Math.PI, 0);
+  }
+
   setVisible(visible) {
     this._visible = !!visible;
-    this.root.isVisible = this._visible;
+    this.plane.isVisible = this._visible;
+    if (this._visible && this._cam) {
+      this.attachToCamera(this._cam);
+    }
   }
 
   setWallActionsVisible(visible) {
@@ -248,6 +275,7 @@ export class XRHud {
   dispose() {
     if (this._toastTimer) clearTimeout(this._toastTimer);
     this.ui.dispose();
+    this.plane.dispose();
   }
 }
 

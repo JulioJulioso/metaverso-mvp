@@ -3,9 +3,9 @@
  * Do not edit by hand -- re-run stamp to bump.
  */
 export const BUILD_INFO = {
-  version: "0.1.4",
-  stampedAt: "2026-08-12T15:48:18.746Z",
-  label: "v0.1.4 | 2026-08-12 11:48",
+  version: "0.1.5",
+  stampedAt: "2026-08-12T16:01:15.586Z",
+  label: "v0.1.5 | 2026-08-12 12:01",
 };
 
 export default BUILD_INFO;

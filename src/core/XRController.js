@@ -7,7 +7,6 @@ import {
   StandardMaterial,
   Color3,
   Ray,
-  Space,
 } from '@babylonjs/core';
 
 /**
@@ -52,6 +51,11 @@ export class XRController {
     for (const cb of this._listeners) cb(this.isInXR);
   }
 
+  /** @returns {import('@babylonjs/core').WebXRCamera|null} */
+  getXRCamera() {
+    return this.xrHelper?.baseExperience?.camera ?? null;
+  }
+
   async init() {
     if (!navigator.xr) {
       console.warn('[XRController] WebXR not available in this browser.');
@@ -76,6 +80,8 @@ export class XRController {
         this.isInXR = state === WebXRState.IN_XR;
         if (this.isInXR) {
           console.info('[XRController] Entered immersive-vr');
+        } else {
+          this._clearFallbackGrips();
         }
         this._emit();
       });
@@ -99,18 +105,11 @@ export class XRController {
         controller.inputSource?.handedness
       );
 
-      this._ensureFallbackGrip(controller);
-
+      // Only spawn fallback if model fails — avoids black box at world origin
       controller.onMotionControllerInitObservable.add((motionController) => {
         motionController.onModelLoadedObservable.add(() => {
           console.info('[XRController] Controller model loaded:', controller.uniqueId);
           this._disposeFallbackGrip(controller.uniqueId);
-          // Babylon profiled controllers rotate rootMesh +PI on LH scenes; on Quest
-          // Browser that leaves the mesh facing opposite the laser — undo it.
-          const root = motionController.rootMesh;
-          if (root && !this.scene.useRightHandedSystem) {
-            root.rotate(Axis.Y, Math.PI, Space.LOCAL);
-          }
         });
 
         window.setTimeout(() => {
@@ -120,8 +119,12 @@ export class XRController {
           if (!hasChildren) {
             this._ensureFallbackGrip(controller);
           }
-        }, 2000);
+        }, 2500);
       });
+    });
+
+    this.xrHelper.input.onControllerRemovedObservable?.add((controller) => {
+      this._disposeFallbackGrip(controller.uniqueId);
     });
   }
 
@@ -131,8 +134,9 @@ export class XRController {
   _ensureFallbackGrip(controller) {
     const id = controller.uniqueId;
     if (this._fallbackGrips.has(id)) return;
+    const parent = controller.grip || controller.pointer || null;
+    if (!parent) return;
 
-    // Parent to pointer (same node as the laser), long axis along aim (+Z in LH)
     const grip = MeshBuilder.CreateBox(
       `xrGrip_${id}`,
       { width: 0.035, height: 0.07, depth: 0.14 },
@@ -143,12 +147,8 @@ export class XRController {
     mat.emissiveColor = new Color3(0.05, 0.08, 0.12);
     grip.material = mat;
     grip.isPickable = false;
-
-    const parent = controller.pointer || controller.grip || null;
-    if (parent) {
-      grip.parent = parent;
-      grip.position = new Vector3(0, 0, 0.07);
-    }
+    grip.parent = parent;
+    grip.position = new Vector3(0, 0, 0.02);
 
     this._fallbackGrips.set(id, grip);
   }
@@ -161,8 +161,14 @@ export class XRController {
     }
   }
 
+  _clearFallbackGrips() {
+    for (const id of [...this._fallbackGrips.keys()]) {
+      this._disposeFallbackGrip(id);
+    }
+  }
+
   /**
-   * Prefer right pointer (same aim as laser) for held objects.
+   * Prefer right grip for held objects (natural hand pose).
    * @returns {import('@babylonjs/core').TransformNode|null}
    */
   getPrimaryHandNode() {
@@ -172,11 +178,11 @@ export class XRController {
     const left = controllers.find((c) => c.inputSource?.handedness === 'left');
     const pick = right || left || controllers[0];
     if (!pick) return null;
-    return pick.pointer || pick.grip || null;
+    return pick.grip || pick.pointer || null;
   }
 
   /**
-   * World-space ray matching Babylon's laser (getWorldPointerRayToRef).
+   * World-space ray matching Babylon's laser.
    * @returns {{ origin: Vector3, direction: Vector3, controller: object }|null}
    */
   getPointerRay() {
@@ -200,15 +206,11 @@ export class XRController {
       const pointer = ctrl.pointer;
       if (!pointer) continue;
       const origin = pointer.getAbsolutePosition().clone();
-      // Match Babylon LH pointer ray: local +Z
       let direction = pointer.getDirection
         ? pointer.getDirection(Axis.Z)
         : new Vector3(0, 0, 1);
-      if (direction.lengthSquared() < 1e-6) {
-        direction = new Vector3(0, 0, 1);
-      } else {
-        direction.normalize();
-      }
+      if (direction.lengthSquared() < 1e-6) direction = new Vector3(0, 0, 1);
+      else direction.normalize();
       return { origin, direction, controller: ctrl };
     }
     return null;
@@ -226,7 +228,6 @@ export class XRController {
   }
 
   /**
-   * Lift/lower XR rig so locomotion feet sit on platforms / jump arcs.
    * @param {number} feetY world Y of player feet
    */
   setRigFeetY(feetY) {
@@ -252,9 +253,6 @@ export class XRController {
     return !!(b && (b.pressed || (b.value ?? 0) > 0.65));
   }
 
-  /**
-   * Raw held state from controllers (before edge).
-   */
   _readButtonsHeld() {
     const out = {
       moveX: 0,
@@ -290,24 +288,13 @@ export class XRController {
           if (stick.pressed) out.jump = true;
         }
 
-        if (
-          this._componentPressed(mc, [
-            'xr-standard-trigger',
-            'trigger',
-          ])
-        ) {
+        if (this._componentPressed(mc, ['xr-standard-trigger', 'trigger'])) {
           out.interact = true;
         }
-        if (
-          this._componentPressed(mc, [
-            'xr-standard-squeeze',
-            'squeeze',
-          ])
-        ) {
+        if (this._componentPressed(mc, ['xr-standard-squeeze', 'squeeze'])) {
           out.drop = true;
         }
 
-        // Quest: A/X jump or rise; B/Y drop or explode
         if (handed === 'right') {
           if (
             this._componentPressed(mc, [
@@ -363,7 +350,6 @@ export class XRController {
           ay = gp.axes[1] ?? 0;
           got = true;
         }
-        // Common Quest layout: 0 trigger, 1 squeeze, 3 stick click, 4 A/X, 5 B/Y
         if (this._gamepadButton(gp, 0)) out.interact = true;
         if (this._gamepadButton(gp, 1)) out.drop = true;
         if (this._gamepadButton(gp, 3)) out.jump = true;
@@ -380,8 +366,9 @@ export class XRController {
         if (handed === 'right') {
           out.turnX += ax;
         } else {
+          // Invert stick Y vs previous mapping (Quest push-forward was reversed)
           out.moveX += ax;
-          out.moveZ += -ay;
+          out.moveZ += ay;
         }
       }
     }
@@ -389,13 +376,6 @@ export class XRController {
     return out;
   }
 
-  /**
-   * @returns {{
-   *   moveX: number, moveZ: number, turnX: number,
-   *   interact: boolean, interactHeld: boolean,
-   *   jump: boolean, drop: boolean, rise: boolean, explode: boolean,
-   * }}
-   */
   getMoveState() {
     const held = this._readButtonsHeld();
     const dead = 0.18;
@@ -422,7 +402,6 @@ export class XRController {
     };
   }
 
-  /** @deprecated use getMoveState axes */
   getThumbstickAxes() {
     const s = this.getMoveState();
     return {
@@ -434,7 +413,6 @@ export class XRController {
   }
 
   /**
-   * Apply stick locomotion (XZ + yaw) to the XR camera rig.
    * @param {number} delta seconds
    */
   update(delta) {
@@ -490,9 +468,6 @@ export class XRController {
     }
   }
 
-  /**
-   * @returns {{ x:number, y:number, z:number }|null}
-   */
   getViewerPosition() {
     if (!this.isInXR || !this.xrHelper) return null;
     const cam = this.xrHelper.baseExperience.camera;
@@ -505,8 +480,7 @@ export class XRController {
   }
 
   dispose() {
-    for (const mesh of this._fallbackGrips.values()) mesh.dispose();
-    this._fallbackGrips.clear();
+    this._clearFallbackGrips();
     this._listeners.clear();
   }
 }

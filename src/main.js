@@ -172,6 +172,11 @@ async function boot() {
 
   xr.onSessionChange((active) => {
     cameraRig.setEnabled(!active);
+    if (active) {
+      xrHud.attachToCamera(xr.getXRCamera());
+    } else {
+      xrHud.attachToCamera(null);
+    }
     xrHud.setVisible(active);
     hudRoot.style.visibility = active ? 'hidden' : 'visible';
     player.mesh.isVisible = !active;
@@ -179,8 +184,8 @@ async function boot() {
       xrHud.updateCircuit(circuit.getSnapshot());
       xrHud.updateCoins(achievements.getState());
       notify(
-        'VR: checklist izq · Y levantar · X despiece · A saltar · gatillo tomar/video',
-        4500
+        'Salto: botón A (derecho) o click del stick · HUD a ~2m delante',
+        5000
       );
     }
   });
@@ -314,12 +319,16 @@ async function boot() {
       if (viewer) {
         player.setWorldXZ(viewer.x, viewer.z);
       }
+      const wasGrounded = player.grounded;
       player.update(delta, {
         ...state,
         skipHorizontal: true,
         faceYaw: 0,
       });
       xr.setRigFeetY(player.getFeetY());
+      if (state.jump && wasGrounded) {
+        notify('¡Salto!', 800);
+      }
     } else {
       player.update(delta, {
         ...state,
