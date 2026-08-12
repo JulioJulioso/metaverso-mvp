@@ -41,8 +41,9 @@ async function boot() {
   const input = new InputController(canvas);
   const xr = new XRController(scene, {
     floorMeshes: [sceneManager.ground],
-    movementSpeed: 0.4,
-    rotationSpeed: 0.3,
+    // meters / second — Quest thumbstick locomotion
+    movementSpeed: 3.2,
+    rotationSpeed: 1.8,
   });
   await xr.init();
 
@@ -214,7 +215,7 @@ async function boot() {
         explode: desktop.explode,
         lookDeltaX: 0,
         lookDeltaY: 0,
-        skipHorizontal: xr.usesNativeMovement(),
+        skipHorizontal: false,
       };
     }
     return { ...desktop, skipHorizontal: false };
@@ -241,19 +242,23 @@ async function boot() {
   sceneManager.setUpdateCallback((delta) => {
     const state = resolveInput();
 
+    // XR camera locomotion (thumbsticks) — isolated in XRController.update
+    if (xr.isInXR) {
+      xr.update(delta);
+    }
+
     if (!xr.isInXR && (state.lookDeltaX || state.lookDeltaY)) {
       cameraRig.addLook(state.lookDeltaX, state.lookDeltaY);
     }
 
-    const playerPos = player.getPosition();
+    const playerPosEarly = player.getPosition();
     const nearWalls = isNearXZ(
-      playerPos,
+      playerPosEarly,
       walls.getInteractionPoint(),
       levelConfig.walls.promptRadius ?? 5.5
     );
     hud.setWallActionsVisible(nearWalls);
 
-    // Wall actions only while in proximity (contextual UI)
     if (nearWalls && state.explode) {
       triggerExplodeWalls();
     }
@@ -263,13 +268,8 @@ async function boot() {
       hud.showMessage('Pelota soltada — cae al suelo');
     }
 
-    player.update(delta, {
-      ...state,
-      faceYaw: xr.isInXR ? 0 : cameraRig.getFaceYaw(),
-    });
-
-    // Keep gameplay capsule under the headset when XR MOVEMENT moves the camera
-    if (xr.isInXR && xr.usesNativeMovement()) {
+    // In XR: camera moves via xr.update; keep capsule under headset for interactions
+    if (xr.isInXR) {
       const viewer = xr.getViewerPosition();
       if (viewer) {
         player.setWorldPosition({
@@ -278,6 +278,16 @@ async function boot() {
           z: viewer.z,
         });
       }
+      player.update(delta, {
+        ...state,
+        skipHorizontal: true,
+        faceYaw: 0,
+      });
+    } else {
+      player.update(delta, {
+        ...state,
+        faceYaw: cameraRig.getFaceYaw(),
+      });
     }
 
     sphere.update(delta);
