@@ -106,6 +106,32 @@ export class WallAssembly {
     };
   }
 
+  /**
+   * Solid AABBs for player collision. Buried panels are skipped.
+   * @returns {Array<{minX:number,maxX:number,minZ:number,maxZ:number,topY:number,bottomY:number,sizeY:number}>}
+   */
+  getCollisionBoxes() {
+    const w = this.config.width;
+    const h = this.config.height;
+    const d = this.config.depth;
+    const boxes = [];
+    for (const wall of this.walls) {
+      const p = wall.mesh.getAbsolutePosition();
+      // Ignore panels still mostly underground
+      if (p.y + h / 2 < 0.15) continue;
+      boxes.push({
+        minX: p.x - w / 2,
+        maxX: p.x + w / 2,
+        minZ: p.z - d / 2,
+        maxZ: p.z + d / 2,
+        topY: p.y + h / 2,
+        bottomY: p.y - h / 2,
+        sizeY: h,
+      });
+    }
+    return boxes;
+  }
+
   /** @returns {boolean} true when rise fully complete this frame */
   update(delta) {
     let justFinishedRise = false;

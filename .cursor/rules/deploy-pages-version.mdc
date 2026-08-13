@@ -8,7 +8,9 @@ alwaysApply: true
 ## Git
 
 - El **agente NO** ejecuta `git commit`, `git push` ni `git add` orientado a commitear.
-- Tras cambios listos para Pages, el agente indica al **usuario** los comandos PowerShell.
+- **Tras cada mensaje con cambios de código**, el agente debe cerrar con comandos PowerShell de `git add` / `commit` / `push` para que el **usuario** los ejecute.
+- Si el cambio debe verse en Quest/Pages: incluir `npm run build:pages` y `docs/` en esos comandos.
+- Si solo es prueba local: igual dar commit/push de `src/` (y lo tocado); el usuario decide si publica.
 
 ## Versionado
 

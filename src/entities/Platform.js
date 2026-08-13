@@ -56,6 +56,8 @@ export class Platform {
       minZ: p.z - s.z / 2,
       maxZ: p.z + s.z / 2,
       topY: p.y + s.y / 2,
+      bottomY: p.y - s.y / 2,
+      sizeY: s.y,
       requiresJump: this.requiresJump,
     };
   }

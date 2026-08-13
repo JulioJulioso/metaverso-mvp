@@ -239,6 +239,27 @@ export class XRController {
     }
   }
 
+  /**
+   * Snap XR rig XZ so solid collisions applied to the player also stop the camera.
+   * @param {number} x
+   * @param {number} z
+   */
+  setRigXZ(x, z) {
+    if (!this.isInXR || !this.xrHelper) return;
+    const cam = this.xrHelper.baseExperience.camera;
+    if (!cam) return;
+    const parent = cam.cameraRigParent;
+    if (parent) {
+      const dx = x - cam.position.x;
+      const dz = z - cam.position.z;
+      parent.position.x += dx;
+      parent.position.z += dz;
+    } else {
+      cam.position.x = x;
+      cam.position.z = z;
+    }
+  }
+
   _componentPressed(mc, ids) {
     if (!mc) return false;
     for (const id of ids) {

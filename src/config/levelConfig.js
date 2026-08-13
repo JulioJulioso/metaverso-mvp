@@ -11,7 +11,7 @@ export const levelConfig = {
     moveSpeed: 4.2,
     jumpSpeed: 6.2,
     gravity: 18,
-    maxStepHeight: 0.42,
+    maxStepHeight: 0.5,
   },
 
   groundY: 0,

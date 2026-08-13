@@ -149,6 +149,36 @@ export class MediaScreen {
     return !!this._playing;
   }
 
+  /**
+   * Solid AABBs: pedestal, pole, and TV frame (screen thickness).
+   * @returns {Array<{minX:number,maxX:number,minZ:number,maxZ:number,topY:number,bottomY:number,sizeY:number}>}
+   */
+  getCollisionBoxes() {
+    const boxes = [];
+    const add = (mesh, size) => {
+      const p = mesh.getAbsolutePosition();
+      boxes.push({
+        minX: p.x - size.x / 2,
+        maxX: p.x + size.x / 2,
+        minZ: p.z - size.z / 2,
+        maxZ: p.z + size.z / 2,
+        topY: p.y + size.y / 2,
+        bottomY: p.y - size.y / 2,
+        sizeY: size.y,
+      });
+    };
+
+    const w = this.config.screenSize.width;
+    const h = this.config.screenSize.height;
+    const poleH = Math.max(0.6, this.config.screenPosition.y - 0.25);
+
+    add(this.base, { x: w + 0.4, y: 0.12, z: 0.55 });
+    add(this.pole, { x: 0.12, y: poleH, z: 0.12 });
+    add(this.frame, { x: w + 0.14, y: h + 0.14, z: 0.12 });
+
+    return boxes;
+  }
+
   dispose() {
     this.playIcon.dispose();
     this.mesh.dispose();

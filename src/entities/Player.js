@@ -10,10 +10,14 @@ import {
   normalizeXZ,
   yawFromVelocityXZ,
 } from '../systems/LocomotionMath.js';
+import {
+  getGroundHeightAt,
+  resolveSolidCapsule,
+  tryStepUp,
+} from '../systems/CollisionSystem.js';
 
 /**
- * Controllable visitor capsule with jump / step-limited platforms.
- * Horizontal move is camera-relative via faceYaw (see LocomotionMath).
+ * Controllable visitor capsule with solid platform colliders + step/jump.
  */
 export class Player {
   /**
@@ -32,6 +36,8 @@ export class Player {
     this.velocityY = 0;
     this.grounded = true;
     this.touchedJumpPlatform = false;
+    /** @type {(() => object[])|object[]} */
+    this._extraColliders = [];
 
     const h = config.height;
     const r = config.radius;
@@ -77,8 +83,24 @@ export class Player {
     return this.root.position.y - this.config.height / 2;
   }
 
+  _platformColliders() {
+    const fromPlatforms = this.platforms.map((p) => p.getCollisionData());
+    const extra =
+      typeof this._extraColliders === 'function'
+        ? this._extraColliders()
+        : this._extraColliders;
+    return fromPlatforms.concat(extra || []);
+  }
+
   /**
-   * Snap body XZ (and optional Y) — XR syncs feet height via physics, not headset Y.
+   * Extra solid AABBs (walls, media screen, etc.). Can be a getter for moving meshes.
+   * @param {(() => object[])|object[]} boxesOrGetter
+   */
+  setExtraColliders(boxesOrGetter) {
+    this._extraColliders = boxesOrGetter;
+  }
+
+  /**
    * @param {{ x:number, y?:number, z:number }} worldPos
    * @param {{ syncY?: boolean }} [opts]
    */
@@ -109,6 +131,11 @@ export class Player {
    * }} input
    */
   update(delta, input) {
+    const colliders = this._platformColliders();
+    const radius = this.config.radius;
+    const height = this.config.height;
+    const maxStep = this.config.maxStepHeight ?? 0.45;
+
     if (!input.skipHorizontal) {
       let mx = input.moveX ?? 0;
       let mz = input.moveZ ?? 0;
@@ -130,6 +157,36 @@ export class Player {
       }
     }
 
+    // Step-up onto low platforms before treating them as solid walls
+    if (this.grounded || this.velocityY <= 0.05) {
+      const stepped = tryStepUp(
+        this.getFeetY(),
+        this.root.position.x,
+        this.root.position.z,
+        colliders,
+        maxStep
+      );
+      if (stepped != null) {
+        this.root.position.y = stepped + height / 2;
+        this.velocityY = 0;
+        this.grounded = true;
+      }
+    }
+
+    // Solid volume: push out of platform sides / interiors
+    const resolved = resolveSolidCapsule(
+      {
+        x: this.root.position.x,
+        y: this.root.position.y,
+        z: this.root.position.z,
+      },
+      radius,
+      height,
+      colliders
+    );
+    this.root.position.x = resolved.x;
+    this.root.position.z = resolved.z;
+
     if (input.jump && this.grounded) {
       this.velocityY = this.config.jumpSpeed;
       this.grounded = false;
@@ -138,16 +195,40 @@ export class Player {
     this.velocityY -= this.config.gravity * delta;
     this.root.position.y += this.velocityY * delta;
 
-    const support = this._resolveSupportHeight(this.getFeetY());
-    const targetY = support + this.config.height / 2;
+    const support = getGroundHeightAt(
+      this.root.position,
+      colliders,
+      this.groundY,
+      {
+        feetY: this.getFeetY(),
+        maxStepHeight: maxStep,
+        velocityY: this.velocityY,
+        grounded: this.grounded,
+      }
+    );
+    const targetY = support + height / 2;
 
-    if (this.velocityY <= 0 && this.root.position.y <= targetY + 0.02) {
+    if (this.velocityY <= 0 && this.root.position.y <= targetY + 0.04) {
       this.root.position.y = targetY;
       this.velocityY = 0;
       this.grounded = true;
-    } else if (this.root.position.y > targetY + 0.05) {
+    } else if (this.root.position.y > targetY + 0.06) {
       this.grounded = false;
     }
+
+    // Re-resolve solids after vertical move (landed inside a box edge case)
+    const resolved2 = resolveSolidCapsule(
+      {
+        x: this.root.position.x,
+        y: this.root.position.y,
+        z: this.root.position.z,
+      },
+      radius,
+      height,
+      colliders
+    );
+    this.root.position.x = resolved2.x;
+    this.root.position.z = resolved2.z;
 
     if (this.grounded) {
       for (const p of this.platforms) {
@@ -168,48 +249,8 @@ export class Player {
   }
 
   /**
-   * Highest surface the player can stand on given current feet height.
-   * Tall ledges (> maxStepHeight) only work when feet are already near the top (after jump).
-   */
-  _resolveSupportHeight(feetY) {
-    const maxStep = this.config.maxStepHeight;
-    let support = this.groundY;
-    const x = this.root.position.x;
-    const z = this.root.position.z;
-    const margin = 0.05;
-
-    for (const p of this.platforms) {
-      const d = p.getCollisionData();
-      if (
-        x < d.minX - margin ||
-        x > d.maxX + margin ||
-        z < d.minZ - margin ||
-        z > d.maxZ + margin
-      ) {
-        continue;
-      }
-
-      const top = d.topY;
-      const rise = top - feetY;
-
-      // Landing / standing near top surface
-      if (feetY >= top - 0.35 && feetY <= top + 0.5 && this.velocityY <= 0.8) {
-        if (top > support) support = top;
-        continue;
-      }
-
-      // Walk-up onto small steps only
-      if (this.grounded && rise > 0 && rise <= maxStep) {
-        if (top > support) support = top;
-      }
-    }
-
-    return support;
-  }
-
-  /**
    * @param {{ mesh: import('@babylonjs/core').Mesh, setHeld: (v: boolean) => void }} object
-   * @param {import('@babylonjs/core').TransformNode|null} [attachNode] XR grip/pointer; defaults to body hand
+   * @param {import('@babylonjs/core').TransformNode|null} [attachNode]
    */
   pickUp(object, attachNode = null) {
     if (this.heldObject) return false;
@@ -217,7 +258,6 @@ export class Player {
     object.mesh.setParent(parent);
     object.mesh.position = Vector3.Zero();
     if (attachNode) {
-      // Along pointer aim (+Z in Babylon left-handed XR)
       object.mesh.position = new Vector3(0, 0, 0.12);
     }
     object.setHeld(true);

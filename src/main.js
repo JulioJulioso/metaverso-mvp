@@ -67,6 +67,10 @@ async function boot() {
     levelConfig.groundY,
     shadowGen
   );
+  player.setExtraColliders(() => [
+    ...walls.getCollisionBoxes(),
+    ...media.getCollisionBoxes(),
+  ]);
 
   const circuit = new CircuitSystem(levelConfig.circuitSteps);
   /** @type {import('./ui/HUD.js').HUD|null} */
@@ -313,7 +317,7 @@ async function boot() {
       cameraRig.addLook(state.lookDeltaX, state.lookDeltaY);
     }
 
-    // XR: capsule XZ under headset; Y from jump/platform physics (not headset)
+    // XR: capsule XZ under headset; Y + solid colliders from Player
     if (xr.isInXR) {
       const viewer = xr.getViewerPosition();
       if (viewer) {
@@ -325,6 +329,9 @@ async function boot() {
         skipHorizontal: true,
         faceYaw: 0,
       });
+      // Push camera out of solids / onto platform tops with the capsule
+      const pos = player.getPosition();
+      xr.setRigXZ(pos.x, pos.z);
       xr.setRigFeetY(player.getFeetY());
       if (state.jump && wasGrounded) {
         notify('¡Salto!', 800);
