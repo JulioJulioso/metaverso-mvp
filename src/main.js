@@ -311,6 +311,7 @@ async function boot() {
 
     if (xr.isInXR) {
       xr.update(delta);
+      xrHud.syncToCamera();
     }
 
     if (!xr.isInXR && (state.lookDeltaX || state.lookDeltaY)) {

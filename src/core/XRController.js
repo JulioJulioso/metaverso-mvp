@@ -29,6 +29,7 @@ export class XRController {
     this._listeners = new Set();
     /** @type {Map<string, import('@babylonjs/core').Mesh>} */
     this._fallbackGrips = new Map();
+    this._rigFeetY = null;
     /** @type {Record<string, boolean>} */
     this._prevButtons = {
       interact: false,
@@ -80,8 +81,10 @@ export class XRController {
         this.isInXR = state === WebXRState.IN_XR;
         if (this.isInXR) {
           console.info('[XRController] Entered immersive-vr');
+          this._rigFeetY = null;
         } else {
           this._clearFallbackGrips();
+          this._rigFeetY = null;
         }
         this._emit();
       });
@@ -228,15 +231,23 @@ export class XRController {
   }
 
   /**
+   * Lift/lower the XR rig by the same delta as the capsule feet.
+   * Absolute assignment fights the Quest floor origin; delta keeps tracking height.
    * @param {number} feetY world Y of player feet
    */
   setRigFeetY(feetY) {
     if (!this.isInXR || !this.xrHelper) return;
     const cam = this.xrHelper.baseExperience.camera;
-    const parent = cam?.cameraRigParent;
-    if (parent) {
-      parent.position.y = feetY;
+    const parent = cam?.cameraRigParent || cam?.parent;
+    if (!parent) return;
+    if (this._rigFeetY == null) {
+      this._rigFeetY = feetY;
+      return;
     }
+    const dy = feetY - this._rigFeetY;
+    this._rigFeetY = feetY;
+    if (Math.abs(dy) < 1e-5) return;
+    parent.position.y += dy;
   }
 
   /**
@@ -387,9 +398,9 @@ export class XRController {
         if (handed === 'right') {
           out.turnX += ax;
         } else {
-          // Invert stick Y vs previous mapping (Quest push-forward was reversed)
+          // WebXR thumbstick: forward is negative Y → moveZ positive (look forward)
           out.moveX += ax;
-          out.moveZ += ay;
+          out.moveZ += -ay;
         }
       }
     }
@@ -477,14 +488,15 @@ export class XRController {
     }
 
     if (tx !== 0) {
+      // Positive stick X = turn right (same as typical Quest snap/smooth turn)
       const yaw = tx * turnSpeed * delta;
-      const parent = cam.cameraRigParent;
+      const parent = cam.cameraRigParent || cam.parent;
       const target = parent || cam;
       if (target.rotationQuaternion) {
-        const deltaQ = Quaternion.RotationAxis(Axis.Y, -yaw);
+        const deltaQ = Quaternion.RotationAxis(Axis.Y, yaw);
         target.rotationQuaternion = deltaQ.multiply(target.rotationQuaternion);
       } else {
-        target.rotation.y -= yaw;
+        target.rotation.y += yaw;
       }
     }
   }

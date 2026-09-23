@@ -1,5 +1,9 @@
 # Metaverso MVP (Babylon.js + WebXR)
 
+> **Archivado (septiembre 2026).** Esta es la rama `babylon-archive` (tag `babylon-final`).
+> El metaverso se reconstruyo en Unity 6 (WebGL + WebXR + Photon Fusion) en la rama
+> `main` de este mismo repositorio. No se agregan features aqui.
+
 Runtime web single-user para visitas arquitectónicas. **Babylon.js** es el motor; **Revit/Rhino** son authoring BIM; **Unity** es baker opcional.
 
 ## Requisitos

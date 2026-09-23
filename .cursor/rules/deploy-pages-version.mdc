@@ -1,7 +1,9 @@
 ---
-description: Deploy GitHub Pages with stamped HUD version; agent never commits/pushes
-alwaysApply: true
+description: (Archivado) Deploy del MVP Babylon. Solo aplica si se trabaja dentro de metaverso-mvp.
+alwaysApply: false
 ---
+
+> MVP archivado. El proyecto activo es Unity; su regla es `.cursor/rules/deploy-unity-web.mdc` en la raiz.
 
 # Deploy Pages + versión HUD (metaverso-mvp)
 

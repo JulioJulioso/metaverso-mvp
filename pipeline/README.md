@@ -1,5 +1,10 @@
 # Pipeline de bake AEC → runtime
 
+> **Archivado (septiembre 2026).** Esta guia es del MVP en Babylon.js y ya no se usa.
+> El metaverso ahora corre en Unity 6 (rama `main`). La importacion de Revit y Rhino
+> esta en `Docs/PIPELINE_MODELOS.md` de esa rama.
+> `bimIndex.schema.json` y `AssetLoader` solo aplican a este MVP.
+
 Checklist para llevar modelos de **Revit / Rhinoceros** al viewer Babylon (metros, origen rebased).
 
 ## Ruta recomendada (industria)

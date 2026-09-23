@@ -206,10 +206,35 @@ export class XRHud {
       return;
     }
     this.plane.parent = camera;
-    // In front of eyes (~2m), slightly down and left so it does not block center gaze
-    this.plane.position = new Vector3(-0.35, -0.12, 2.05);
-    // Face the user (plane default faces +Z; camera looks +Z → flip)
-    this.plane.rotation.set(0, Math.PI, 0);
+    this.syncToCamera();
+  }
+
+  /**
+   * Keep the panel ~2m in front of the headset, facing the user.
+   * Uses the camera forward ray so it stays correct if XR local Z is flipped.
+   */
+  syncToCamera() {
+    const camera = this._cam;
+    if (!camera || !this._visible) return;
+
+    this.plane.parent = camera;
+    const origin = camera.globalPosition ?? camera.position;
+    const forward = camera.getForwardRay?.(2.05)?.direction;
+    if (!forward || forward.lengthSquared() < 1e-6) return;
+
+    const right = Vector3.Cross(Vector3.Up(), forward);
+    if (right.lengthSquared() > 1e-6) right.normalize();
+    else right.copyFromFloats(1, 0, 0);
+    const up = Vector3.Cross(forward, right);
+    if (up.lengthSquared() > 1e-6) up.normalize();
+
+    const worldPos = origin
+      .add(forward.scale(2.05))
+      .add(right.scale(-0.35))
+      .add(up.scale(-0.12));
+    this.plane.setAbsolutePosition(worldPos);
+    this.plane.lookAt(origin);
+    // lookAt aims mesh +Z at the camera; Babylon planes render on +Z so the user sees the front
   }
 
   setVisible(visible) {
