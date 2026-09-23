@@ -70,7 +70,7 @@ sequenceDiagram
 
 ## Build web
 
-- `Editor/WebBuildPipeline.cs` estampa `Resources/BuildInfo.asset`, compila dos variantes (`desktop` y `quest`) y escribe `metaverso-web/docs/index.html`, que redirige segun el user agent.
+- `Editor/WebBuildPipeline.cs` estampa `Resources/BuildInfo.asset`, compila dos variantes (`desktop` y `quest`) y escribe `metaverso-web/docs/index.html`, que redirige segun el user agent. Entre variantes el editor recarga: cambiar DXT/ASTC deja un domain reload pendiente y el player no se puede compilar hasta que termina.
 - `Editor/BuildSizeCheck.cs` corta el build si el `.data` supera 50 MB.
 - `Plugins/WebGL/MediaOverlay.jslib` abre el video en un iframe HTML encima del canvas (solo PC).
 
