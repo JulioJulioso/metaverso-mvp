@@ -1,0 +1,18 @@
+{
+  "name": "Metaverso.Fusion",
+  "rootNamespace": "Metaverso.Network",
+  "references": [
+    "Metaverso.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "PHOTON_FUSION"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

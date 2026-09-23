@@ -1,0 +1,21 @@
+{
+  "name": "Metaverso.Editor",
+  "rootNamespace": "Metaverso.EditorTools",
+  "references": [
+    "Metaverso.Runtime",
+    "Unity.InputSystem",
+    "Unity.Timeline",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,8 +1,55 @@
-node_modules/
-dist/
-.DS_Store
-*.log
-.vite/
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# IDE / generated projects
+.vs/
 .idea/
-.vscode/*
-!.vscode/extensions.json
+.gradle/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+sysinfo.txt
+crashlytics-buildid.txt
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# QA local
+Tools/qa/node_modules/
+Tools/qa/test-results/
+Tools/qa/playwright-report/
+
+# Builds locales
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# metaverso-web es el worktree de la rama gh-pages.
+# metaverso-mvp es un clon local del MVP Babylon (rama babylon-archive); se puede borrar.
+/metaverso-mvp/
+/metaverso-web/

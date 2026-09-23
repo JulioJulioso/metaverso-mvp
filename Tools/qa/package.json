@@ -1,0 +1,12 @@
+{
+  "name": "metaverso-qa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "shell": "node check-shell.mjs",
+    "smoke": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  }
+}

@@ -1,110 +1,95 @@
-# Metaverso MVP (Babylon.js + WebXR)
+# Metaverso Sinestesia
 
-Runtime web single-user para visitas arquitectónicas. **Babylon.js** es el motor; **Revit/Rhino** son authoring BIM; **Unity** es baker opcional.
+Metaverso de arquitectura que se abre desde un link en el navegador:
 
-## Requisitos
+- **PC:** tercera persona con teclado y mouse.
+- **Meta Quest:** el mismo link en el navegador del visor, boton VR, caminar con los sticks.
+- **Multiplayer:** varias personas en la misma sala (`?room=` en la URL) con Photon Fusion 2.
 
-- Node.js 18+ recomendado
-- Navegador con WebGL2
-- Meta Quest Browser para WebXR (HTTPS o localhost)
+No se instala una aplicacion. La primera visita descarga el mundo en la cache del navegador; las siguientes solo bajan lo que cambio.
 
-## Instalación y ejecución
+Motor: **Unity 6000.3.9f1**, URP, plataforma Web (WebGL) con [WebXR Export](https://github.com/De-Panther/unity-webxr-export) 0.25 y XR Interaction Toolkit 3.2.
 
-```bash
-cd metaverso-mvp
-npm install
-npm run dev
+## Empezar
+
+1. Instala Unity **6000.3.9f1** con el modulo **Web Build Support** (Unity Hub).
+2. Instala [Git LFS](https://git-lfs.com) y clona: `git lfs install` y luego `git clone ...`.
+3. Abre la carpeta en Unity Hub. La primera apertura descarga paquetes (OpenUPM incluido) y tarda.
+4. Al terminar de compilar se aplican los Player Settings web y se crea la escena `Assets/_Metaverso/Scenes/Circuito.unity`. Si no aparece: menu **Metaverso > Crear mundo de prueba**.
+5. Play. Clic en la vista para capturar el mouse, Escape para soltarlo.
+
+| PC | Quest (dentro de VR) |
+| --- | --- |
+| WASD / flechas: mover | Stick izquierdo: caminar |
+| Mouse: mirar | Stick derecho: girar 30 grados |
+| Espacio: saltar | Click stick derecho: teletransporte corto |
+| E / F: tomar / soltar pelota | Gatillo / grip: tomar / soltar |
+| Clic en la pantalla: video | HUD a 2 m delante |
+
+## Menu Metaverso (en el editor)
+
+| Menu | Que hace |
+| --- | --- |
+| Crear mundo de prueba | Regenera `Circuito.unity` (circuito del MVP + rig VR) |
+| Crear rig VR | Rehace solo el XR Origin en la escena abierta |
+| Configurar proyecto Web | Reaplica Player Settings (Brotli, hashes, cache, stripping) |
+| Configurar WebXR | Copia plantillas WebXR y activa el loader para Web |
+| Preparar modelo arquitectonico | Colliders, estaticos, capa Architecture y reporte de presupuesto Quest |
+| Build Web (desktop + Quest) | Sube la version y deja el sitio en `metaverso-web/docs` |
+| Red > Activar Photon Fusion | Enciende el multiplayer cuando el SDK ya esta importado |
+
+## Estructura
+
+```
+Assets/_Metaverso/
+  Scripts/Core        Logica pura y testeable (version, sala, presupuesto, modo PC/VR, circuito)
+  Scripts/Player      Controlador de PC y camara en tercera persona
+  Scripts/World       Circuito de prueba: monedas, pelota, zonas, muros, pantalla, fichas BIM
+  Scripts/UI          HUD (pantalla en PC, mundo en VR)
+  Scripts/XR          Cambio PC/VR y locomocion del Quest (depende de WebXR y XRI)
+  Scripts/Network     Sesion local; Fusion/ se compila solo con PHOTON_FUSION
+  Scripts/Editor      Menus, importador de modelos, build web, chequeo de tamano
+  Scripts/EditorXR    Configuracion WebXR y constructor del rig VR
+  Plugins/WebGL       jslib del overlay de video
+  Models/Arch         Aqui van los FBX / GLB de Revit y Rhino
+  Scenes              Circuito.unity y su Timeline
+  Tests               EditMode y PlayMode
+Assets/Settings       URP: Web_RPAsset es el de la plataforma Web
+Assets/WebGLTemplates Plantillas de WebXR Export (se usa WebXRFullView2020)
+Docs/                 Documentacion (ver abajo)
+Tools/qa/             Chequeos del sitio publicado (Node + Playwright)
+metaverso-web/        Sitio publicado: worktree de la rama gh-pages (ignorado en main)
+Tools/publish-web.ps1 Publica metaverso-web en gh-pages
 ```
 
-Abrir la URL que imprime Vite (por defecto `http://localhost:5173`).
+## Repositorio y ramas
 
-### Producción estática
+[JulioJulioso/metaverso-mvp](https://github.com/JulioJulioso/metaverso-mvp) (el nombre viene del MVP original).
 
-```bash
-npm run build
-npm run preview
-```
+| Rama | Contenido |
+| --- | --- |
+| `main` | Este proyecto Unity |
+| `gh-pages` | Sitio publicado en https://juliojulioso.github.io/metaverso-mvp/ |
+| `babylon-archive`, tag `babylon-final` | MVP anterior en Babylon.js, congelado |
 
-El build genera `dist/` desplegable en cualquier hosting estático.
+Despues de clonar, para poder publicar: `git fetch origin gh-pages` y `git worktree add metaverso-web gh-pages` (detalle en [Docs/DEPLOY.md](Docs/DEPLOY.md)).
 
-**Vite `base`:** `/metaverso-mvp/` (GitHub Project Pages).  
-URL prevista: [https://juliojulioso.github.io/metaverso-mvp/](https://juliojulioso.github.io/metaverso-mvp/)  
-Repo: [github.com/JulioJulioso/metaverso-mvp](https://github.com/JulioJulioso/metaverso-mvp)
+## Documentacion
 
-### GitHub Pages
+| Documento | Para que |
+| --- | --- |
+| [ROADMAP.md](ROADMAP.md) | Estado, prioridades y decisiones. Fuente de verdad |
+| [Docs/ARQUITECTURA.md](Docs/ARQUITECTURA.md) | Como se conectan los scripts, assemblies y el cambio PC/VR |
+| [Docs/PIPELINE_MODELOS.md](Docs/PIPELINE_MODELOS.md) | Exportar de Revit / Rhino e importar sin romper el presupuesto |
+| [Docs/DEPLOY.md](Docs/DEPLOY.md) | Build, version, GitHub Pages e iframe en la web del estudio |
+| [Docs/MULTIPLAYER.md](Docs/MULTIPLAYER.md) | Activar Photon Fusion 2 |
+| [Docs/QA.md](Docs/QA.md) | Tests automaticos y checklist manual PC / Quest |
+| [Docs/ESTADO_DEL_ARTE.md](Docs/ESTADO_DEL_ARTE.md) | Alternativas evaluadas y por que Unity |
+| [Docs/EVALUACION_COMERCIAL.md](Docs/EVALUACION_COMERCIAL.md) | Que se vende, costos y riesgos |
 
-**Importante:** no publiques la rama `main` desde la **raíz del repo**. Eso sirve el `index.html` de desarrollo y el navegador pide `/src/main.js` → pantalla blanca (MIME `text/html` por 404).
+## Reglas del repo
 
-Debes servir el **build de producción** (`docs/` tras `npm run build:pages`).
-
-Cada `build:pages` **estampa una versión nueva** (`package.json` patch + `src/config/buildInfo.js`). Esa etiqueta aparece siempre en el **HUD** (esquina inferior derecha), p. ej. `v0.1.13 | 2026-08-12 11:05`. Úsala para confirmar que Quest/Pages tiene el build que acabas de subir (hard refresh si no coincide).
-
-1. Genera el sitio (stamp + build):
-
-```bash
-npm run build:pages
-```
-
-2. Commit y push de `docs/`, `package.json` y `src/config/buildInfo.js` (tú; el agente no hace commit/push). En PowerShell:
-
-```powershell
-git add src package.json docs scripts
-git commit -m "chore: deploy pages build"
-git push origin main
-```
-
-3. En GitHub: **Settings → Pages → Build and deployment**
-   - **Source:** Deploy from a branch  
-   - **Branch:** `main`  
-   - **Folder:** `/docs`  
-4. Espera 1–2 min y abre:  
-   **https://juliojulioso.github.io/metaverso-mvp/**
-
-Si F12 pide `https://juliojulioso.github.io/src/main.js`, Pages sigue en la raíz sin build: repite los pasos y fuerza un hard refresh (Ctrl+F5).
-
-Local con la base de Pages:
-
-```bash
-npm run dev
-npm run build:pages
-npx vite preview --outDir docs --base /metaverso-mvp/
-```
-
-## Controles
-
-| Input | Acción |
-|-------|--------|
-| WASD / flechas | Mover visitante |
-| E / Espacio | Interactuar (recoger esfera) |
-| F | Soltar esfera |
-| Clic izquierdo | Info BIM de malla (demo) |
-| Botón VR (Babylon) | Entrar `immersive-vr` |
-
-Las monedas (marcadores) se recogen por proximidad. Completar todas muestra “¡Misión completada!”.
-
-## Arquitectura (carpetas)
-
-- `src/core` — motor, input, XR, unidades, carga GLB
-- `src/entities` — player, monedas, esfera, plataformas
-- `src/systems` — colisión, interacción, logros, cámara, BIM stub, picking, network stub
-- `src/config/levelConfig.js` — layout del nivel de demo (metros)
-- `assets/models` — destino de `.glb` runtime
-- `assets/bim` — sidecars `bim-index`
-- `docs/AEC_PIPELINE.md` — estándar IFC/Speckle → glTF
-- `pipeline/` — schema y checklist de bake
-
-## Unidades y AEC
-
-- **1 unidad de mundo = 1 metro**
-- Cotas BIM en sidecar en **mm** (ver `pipeline/bimIndex.schema.json`)
-- Orígenes de obra grandes: activar `useLargeWorldRendering` en `SceneManager` al cargar modelos reales (ver docs Babylon Large World)
-
-## Decisiones del MVP
-
-- Primitivas en código (no GLB aún) para validar loop y sistemas
-- `AchievementSystem` (no MissionSystem) + `InteractionSystem` genérico
-- `NetworkStub` sin red real
-- Sin física externa; suelo por AABB de plataformas
-- PWA: solo `manifest.json` + icono (sin service worker)
-
-Siguiente fase: bake de un IFC de Revit → `building.glb` + `building.bim.json` y sustituir el suelo de demo.
+- Modelos, texturas, audio y video van por Git LFS (`.gitattributes`).
+- `Library/`, `Temp/`, `Logs/`, `UserSettings/`, `.csproj` y `.vscode/` no se versionan.
+- Un MonoBehaviour por archivo y con el mismo nombre que la clase. Si no, Unity no lo puede guardar en la escena.
+- En este proyecto el agente de Cursor no hace commit ni push (`.cursor/rules/deploy-unity-web.mdc`).

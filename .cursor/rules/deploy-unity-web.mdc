@@ -1,0 +1,44 @@
+---
+description: Deploy del metaverso Unity Web. El agente no hace commit ni push.
+alwaysApply: true
+---
+
+# Deploy Unity Web
+
+## Git
+
+- El agente NO ejecuta `git commit`, `git push` ni `git add` orientado a commitear.
+- Tras cambios que deban publicarse, cierra con los comandos PowerShell para que el usuario los ejecute.
+- Repositorio: https://github.com/JulioJulioso/metaverso-mvp
+  - `main`: proyecto Unity.
+  - `gh-pages`: sitio publicado. Vive en la carpeta `metaverso-web/` como git worktree.
+  - `babylon-archive` y tag `babylon-final`: MVP Babylon congelado. No se toca.
+
+## Version
+
+- `Metaverso > Build Web (desktop + Quest)` estampa `Assets/_Metaverso/Resources/BuildInfo.asset`.
+- El HUD muestra `vX.Y.Z | fecha`. Esa etiqueta es la fuente de verdad en Quest y en PC.
+- El build tambien escribe `metaverso-web/docs/version.json`. El agente la lee y la anuncia en el chat.
+
+## Publicar el sitio (PowerShell, lo ejecuta el usuario)
+
+```powershell
+cd "d:\Unity Repository\MetaversoSinestesia\MetaversoSinestesia"
+.\Tools\publish-web.ps1
+```
+
+- Pages: branch `gh-pages`, folder `/docs`.
+- URL: https://juliojulioso.github.io/metaverso-mvp/
+- Hard refresh en Quest y en el navegador si el HUD no coincide con la version anunciada.
+
+## Commit del codigo (lo ejecuta el usuario)
+
+```powershell
+cd "d:\Unity Repository\MetaversoSinestesia\MetaversoSinestesia"
+git add .
+git status
+git commit -m "..."
+git push origin main
+```
+
+`metaverso-web/` y `metaverso-mvp/` estan en `.gitignore` de `main`.

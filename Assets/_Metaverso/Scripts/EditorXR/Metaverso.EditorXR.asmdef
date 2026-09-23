@@ -1,0 +1,25 @@
+{
+  "name": "Metaverso.EditorXR",
+  "rootNamespace": "Metaverso.EditorXR",
+  "references": [
+    "Metaverso.Runtime",
+    "Metaverso.XR",
+    "WebXR",
+    "Unity.XR.Management",
+    "Unity.XR.Management.Editor",
+    "Unity.XR.Interaction.Toolkit",
+    "Unity.XR.CoreUtils",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
