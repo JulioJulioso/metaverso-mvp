@@ -1,0 +1,9 @@
+# GitHub Pages no sirve archivos de Git LFS: todo el sitio va como binario normal.
+* -filter -diff -merge
+*.data binary
+*.wasm binary
+*.br binary
+*.gz binary
+*.unityweb binary
+*.png binary
+*.ico binary
