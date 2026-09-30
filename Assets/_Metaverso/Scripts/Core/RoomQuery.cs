@@ -1,4 +1,3 @@
-using System;
 using System.Text;
 
 namespace Metaverso
@@ -13,13 +12,13 @@ namespace Metaverso
 
         public static string FromUrl(string url, string fallback = DefaultRoom)
         {
-            var value = ReadParam(url, "room");
+            var value = UrlState.ReadParam(url, UrlState.RoomKey);
             return string.IsNullOrEmpty(value) ? fallback : SanitizeRoom(value);
         }
 
         public static string DisplayNameFromUrl(string url, string fallback = DefaultName)
         {
-            var value = ReadParam(url, "name");
+            var value = UrlState.ReadParam(url, UrlState.NameKey);
             if (string.IsNullOrWhiteSpace(value))
                 return fallback;
             value = value.Trim();
@@ -43,32 +42,6 @@ namespace Metaverso
             if (builder.Length > 32)
                 builder.Length = 32;
             return builder.ToString();
-        }
-
-        static string ReadParam(string url, string key)
-        {
-            if (string.IsNullOrEmpty(url) || string.IsNullOrEmpty(key))
-                return null;
-
-            var queryStart = url.IndexOf('?');
-            if (queryStart < 0 || queryStart >= url.Length - 1)
-                return null;
-
-            var query = url.Substring(queryStart + 1);
-            var hash = query.IndexOf('#');
-            if (hash >= 0)
-                query = query.Substring(0, hash);
-
-            var parts = query.Split('&');
-            for (var i = 0; i < parts.Length; i++)
-            {
-                var kv = parts[i].Split(new[] { '=' }, 2);
-                if (kv.Length != 2 || !string.Equals(kv[0], key, StringComparison.OrdinalIgnoreCase))
-                    continue;
-                return Uri.UnescapeDataString(kv[1].Replace('+', ' '));
-            }
-
-            return null;
         }
     }
 }

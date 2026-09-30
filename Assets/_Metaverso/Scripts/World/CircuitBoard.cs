@@ -79,5 +79,16 @@ namespace Metaverso
             if (ball != null)
                 ball.Hud = hud;
         }
+
+        // El HUD vive en el rig de Boot y sobrevive al mundo: se suelta al salir.
+        void OnDestroy()
+        {
+            var huds = FindObjectsByType<MetaversoHud>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (var i = 0; i < huds.Length; i++)
+            {
+                if (huds[i].Circuit == Tracker)
+                    huds[i].Bind(null, null);
+            }
+        }
     }
 }

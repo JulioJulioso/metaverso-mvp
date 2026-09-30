@@ -3,6 +3,10 @@
   "rootNamespace": "Metaverso.EditorTools",
   "references": [
     "Metaverso.Runtime",
+    "Unity.Addressables",
+    "Unity.Addressables.Editor",
+    "Unity.ResourceManager",
+    "Unity.ScriptableBuildPipeline.Editor",
     "Unity.InputSystem",
     "Unity.Timeline",
     "UnityEngine.UI"

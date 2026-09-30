@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Metaverso
 {
@@ -10,6 +11,7 @@ namespace Metaverso
 
         Rigidbody _body;
         Transform _holder;
+        Scene _home;
 
         public bool IsHeld => _holder != null;
         public bool Grounded { get; private set; }
@@ -17,6 +19,23 @@ namespace Metaverso
         void Awake()
         {
             _body = GetComponent<Rigidbody>();
+            _home = gameObject.scene;
+        }
+
+        void OnEnable()
+        {
+            WorldTravel.Departing += OnDeparting;
+        }
+
+        void OnDisable()
+        {
+            WorldTravel.Departing -= OnDeparting;
+        }
+
+        // La mano es del rig persistente: sin esto la pelota viajaria de mundo en mundo.
+        void OnDeparting(WorldEntry world)
+        {
+            Release();
         }
 
         void OnCollisionStay(Collision collision)
@@ -72,6 +91,8 @@ namespace Metaverso
             if (!IsHeld)
                 return;
             transform.SetParent(null, true);
+            if (_home.IsValid() && _home.isLoaded && gameObject.scene != _home)
+                SceneManager.MoveGameObjectToScene(gameObject, _home);
             _body.isKinematic = false;
             _holder = null;
         }

@@ -10,7 +10,6 @@ namespace Metaverso.EditorTools
 {
     public static class WebBuildPipeline
     {
-        public const string ScenePath = "Assets/_Metaverso/Scenes/Circuito.unity";
         public const string BuildInfoPath = "Assets/_Metaverso/Resources/BuildInfo.asset";
 
         const string StepKey = "Metaverso.WebBuild.Step";
@@ -37,9 +36,9 @@ namespace Metaverso.EditorTools
         [MenuItem("Metaverso/Build Web (desktop + Quest)")]
         public static void BuildBoth()
         {
-            if (!File.Exists(ScenePath))
+            if (!File.Exists(WorldPaths.BootScene))
             {
-                EditorUtility.DisplayDialog("Metaverso", "Falta la escena. Usa Metaverso > Crear mundo de prueba.", "Ok");
+                EditorUtility.DisplayDialog("Metaverso", "Falta la escena Boot. Usa Metaverso > Mundos > Generar Boot y mundos.", "Ok");
                 return;
             }
 
@@ -191,9 +190,15 @@ namespace Metaverso.EditorTools
             if (Directory.Exists(output))
                 Directory.Delete(output, true);
 
+            if (!WorldAddressables.BuildContent(out var contentError))
+            {
+                Fail($"Mundos {folder} ({textureFormat}) fallaron: {contentError}");
+                return false;
+            }
+
             var options = new BuildPlayerOptions
             {
-                scenes = new[] { ScenePath },
+                scenes = new[] { WorldPaths.BootScene },
                 locationPathName = output,
                 target = BuildTarget.WebGL,
                 targetGroup = BuildTargetGroup.WebGL
@@ -210,6 +215,7 @@ namespace Metaverso.EditorTools
                 return false;
             }
 
+            WorldAddressables.CopyContent(Path.Combine(output, WorldContent.BundleFolder));
             PatchIndex(Path.Combine(output, "index.html"), info);
             File.WriteAllText(Path.Combine(output, "texture-format.txt"), textureFormat + "\n");
             return true;
@@ -336,6 +342,14 @@ namespace Metaverso.EditorTools
             if (!File.Exists(indexPath))
                 return;
             var html = File.ReadAllText(indexPath);
+            // Un link copiado de la barra (.../desktop/?world=x) abierto en el otro visor salta a su build.
+            const string variant = "<script id=\"metaverso-variant\">(function(){var q=/Quest|OculusBrowser/i.test(navigator.userAgent);var from=q?\"/desktop/\":\"/quest/\";var to=q?\"/quest/\":\"/desktop/\";var p=location.pathname;if(p.indexOf(from)>=0){location.replace(p.replace(from,to)+location.search+location.hash);}})();</script>";
+            if (!html.Contains("metaverso-variant"))
+            {
+                var head = html.IndexOf("<head>", StringComparison.OrdinalIgnoreCase);
+                html = head >= 0 ? html.Insert(head + "<head>".Length, variant) : variant + html;
+            }
+
             const string note = "<p id=\"metaverso-load-note\" style=\"position:fixed;left:16px;bottom:12px;z-index:5;color:#fff;font:14px sans-serif;text-shadow:0 1px 2px #000;\">La primera visita descarga el mundo en el navegador. No se instala una aplicacion. Las siguientes usan la cache. VERSION</p>";
             if (!html.Contains("metaverso-load-note"))
                 html = html.Replace("</body>", note.Replace("VERSION", info.Label) + "</body>");
@@ -348,6 +362,9 @@ namespace Metaverso.EditorTools
                 "{\"version\":\"" + info.version + "\",\"builtAt\":\"" + info.builtAt + "\",\"label\":\"" + info.Label + "\"}\n");
             File.WriteAllText(Path.Combine(docs, ".nojekyll"), "");
             File.WriteAllText(Path.Combine(docs, "index.html"), ShellHtml());
+            var catalog = Path.GetFullPath(WorldPaths.CatalogAsset);
+            if (File.Exists(catalog))
+                File.Copy(catalog, Path.Combine(docs, WorldContent.CatalogFile), true);
         }
 
         public static string ShellHtml()

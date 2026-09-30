@@ -20,14 +20,16 @@ $versionFile = Join-Path $web "docs/version.json"
 $label = (Get-Content $versionFile -Raw | ConvertFrom-Json).label
 if (-not $Message) { $Message = "deploy web $label" }
 
-$branch = git -C $web rev-parse --abbrev-ref HEAD
-if ($branch -ne "gh-pages") {
+# symbolic-ref sigue diciendo gh-pages en el primer publish, cuando la rama
+# todavia no tiene commits. rev-parse --abbrev-ref HEAD en ese caso imprime HEAD.
+$branch = git -C $web symbolic-ref --short HEAD
+if ($LASTEXITCODE -ne 0 -or $branch -ne "gh-pages") {
     throw "metaverso-web esta en la rama '$branch', se esperaba gh-pages."
 }
 
 git -C $web add -A
 
-git -C $web rev-parse --verify HEAD 2>$null | Out-Null
+git -C $web rev-parse --verify --quiet HEAD | Out-Null
 if ($LASTEXITCODE -eq 0) {
     git -C $web commit --amend -m $Message
 } else {

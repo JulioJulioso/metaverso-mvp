@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Timeline::UnityEngine.Timeline.TimelineAsset
   m_Version: 0
   m_Tracks:
-  - {fileID: 513801340080257691}
+  - {fileID: 1815451709700547757}
   m_FixedDuration: 0
   m_EditorSettings:
     m_Framerate: 60
     m_ScenePreview: 1
   m_DurationMode: 0
   m_MarkerTrack: {fileID: 0}
---- !u!114 &513801340080257691
+--- !u!114 &1815451709700547757
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -44,8 +44,8 @@ MonoBehaviour:
   m_Clips: []
   m_Markers:
     m_Objects:
-    - {fileID: 6683055195956486756}
---- !u!114 &6683055195956486756
+    - {fileID: 3413803270231257743}
+--- !u!114 &3413803270231257743
 MonoBehaviour:
   m_ObjectHideFlags: 1
   m_CorrespondingSourceObject: {fileID: 0}
@@ -60,8 +60,8 @@ MonoBehaviour:
   m_Time: 0
   m_Retroactive: 0
   m_EmitOnce: 0
-  m_Asset: {fileID: 7224029713419073198}
---- !u!114 &7224029713419073198
+  m_Asset: {fileID: 3492895234251041766}
+--- !u!114 &3492895234251041766
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

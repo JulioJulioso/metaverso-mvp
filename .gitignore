@@ -44,6 +44,7 @@ Tools/qa/test-results/
 Tools/qa/playwright-report/
 
 # Builds locales
+/[Ss]erver[Dd]ata/
 *.apk
 *.aab
 *.unitypackage

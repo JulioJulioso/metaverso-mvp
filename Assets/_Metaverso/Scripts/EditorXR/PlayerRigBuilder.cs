@@ -87,7 +87,7 @@ namespace Metaverso.EditorXR
             mode.ScreenHud = screenHud;
             mode.WorldHud = worldHud.gameObject;
 
-            TryAddTeleportAreas();
+            AddTeleportAreas();
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             Debug.Log("[Metaverso] Rig VR creado. Entra con el boton VR de la plantilla WebXR.");
         }
@@ -119,7 +119,8 @@ namespace Metaverso.EditorXR
             host.AddComponent(type);
         }
 
-        static void TryAddTeleportAreas()
+        /// <summary>Suelo ("Ground") y plataformas ("pad-*") de las escenas abiertas. Lo usan los mundos.</summary>
+        public static void AddTeleportAreas()
         {
             var type = Type.GetType("UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea, Unity.XR.Interaction.Toolkit");
             if (type == null)

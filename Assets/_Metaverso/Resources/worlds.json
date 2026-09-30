@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "defaultWorld": "lobby",
+  "worlds": [
+    {
+      "id": "lobby",
+      "name": "Lobby",
+      "access": "public",
+      "address": "world/lobby",
+      "thumbnail": "",
+      "description": "Punto de encuentro. Portales a cada pabellon.",
+      "stands": []
+    },
+    {
+      "id": "pabellon-a",
+      "name": "Pabellon A",
+      "access": "public",
+      "address": "world/pabellon-a",
+      "thumbnail": "",
+      "description": "Ocho stands de expositores.",
+      "stands": [
+        { "id": "stand-1", "name": "Stand 1" },
+        { "id": "stand-2", "name": "Stand 2" },
+        { "id": "stand-3", "name": "Stand 3" },
+        { "id": "stand-4", "name": "Stand 4" },
+        { "id": "stand-5", "name": "Stand 5" },
+        { "id": "stand-6", "name": "Stand 6" },
+        { "id": "stand-7", "name": "Stand 7" },
+        { "id": "stand-8", "name": "Stand 8" }
+      ]
+    },
+    {
+      "id": "stand-privado",
+      "name": "Stand privado",
+      "access": "private",
+      "address": "world/stand-privado",
+      "thumbnail": "",
+      "description": "Sala con password para reuniones de un expositor.",
+      "stands": []
+    },
+    {
+      "id": "circuito",
+      "name": "Circuito",
+      "access": "public",
+      "address": "world/circuito",
+      "thumbnail": "",
+      "description": "Sandbox de interacciones: muros, marcadores, pelota y video.",
+      "stands": []
+    }
+  ]
+}

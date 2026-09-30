@@ -18,8 +18,8 @@ namespace Metaverso.EditorTools
                 if (EditorPrefs.GetBool(PrefKey, false))
                     return;
                 ApplyPlayerSettings();
-                if (!File.Exists(WebBuildPipeline.ScenePath))
-                    TestWorldBuilder.CreateOrReplace();
+                if (!File.Exists(WorldPaths.BootScene))
+                    WorldSceneBuilder.BuildAll();
                 EditorPrefs.SetBool(PrefKey, true);
             };
         }
