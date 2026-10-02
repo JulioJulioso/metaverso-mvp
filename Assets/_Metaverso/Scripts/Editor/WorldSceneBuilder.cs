@@ -106,6 +106,7 @@ namespace Metaverso.EditorTools
 
             var systems = new GameObject("Systems");
             systems.transform.SetParent(root.transform, false);
+            systems.AddComponent<QualityTierController>();
             var fader = systems.AddComponent<TravelFader>();
             var travel = systems.AddComponent<WorldTravel>();
             travel.Rig = rig;

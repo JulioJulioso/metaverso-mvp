@@ -5,7 +5,7 @@ using UnityEngine.AddressableAssets;
 namespace Metaverso
 {
     /// <summary>
-    /// Escena Boot: lee ?world=, ?spawn=, ?room= y ?name=, baja el catalogo y entra al primer mundo.
+    /// Escena Boot: lee ?world=, ?spawn=, ?room=, ?name= y ?quality=, elige la calidad, baja el catalogo y entra al primer mundo.
     /// Sin ?world= va al default del catalogo; un mundo desconocido o privado tambien, con aviso.
     /// </summary>
     public class Bootstrap : MonoBehaviour
@@ -24,6 +24,7 @@ namespace Metaverso
             var url = EntryUrl();
             Entry = UrlState.Read(url);
             Debug.Log($"[Metaverso] Entrada: world='{Entry.World}' spawn='{Entry.Spawn}' room='{Entry.Room}'.");
+            QualityTierController.Ensure(gameObject).Detect(url);
 
             var init = Addressables.InitializeAsync(false);
             while (!init.IsDone)

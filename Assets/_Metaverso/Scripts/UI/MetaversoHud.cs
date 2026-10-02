@@ -17,8 +17,13 @@ namespace Metaverso
         static readonly List<MetaversoHud> Instances = new List<MetaversoHud>();
         static string _lastMessage;
         static string _lastStatus;
+        static string _quality;
+        static string _qualityButton;
 
+        string _buildLabel;
         Text _version;
+        Text _qualityLabel;
+        GameObject _qualityToggle;
         Text _status;
         Text _message;
         Text _checklist;
@@ -46,6 +51,7 @@ namespace Metaverso
                 SetMessage(_lastMessage);
             if (_status != null)
                 _status.text = _lastStatus ?? "";
+            RefreshQuality();
         }
 
         void OnDestroy()
@@ -98,6 +104,31 @@ namespace Metaverso
             }
         }
 
+        /// <summary>Nivel y API junto a la version ("PC WebGL2"). buttonLabel null oculta el selector.</summary>
+        public static void SetQuality(string label, string buttonLabel)
+        {
+            _quality = label;
+            _qualityButton = buttonLabel;
+            for (var i = 0; i < Instances.Count; i++)
+                Instances[i].RefreshQuality();
+        }
+
+        void RefreshQuality()
+        {
+            if (_version != null)
+                _version.text = string.IsNullOrEmpty(_quality) ? _buildLabel : _buildLabel + " | " + _quality;
+            if (_qualityToggle != null)
+                _qualityToggle.SetActive(!string.IsNullOrEmpty(_qualityButton));
+            if (_qualityLabel != null)
+                _qualityLabel.text = _qualityButton ?? "";
+        }
+
+        static void CycleQuality()
+        {
+            if (QualityTierController.Instance != null)
+                QualityTierController.Instance.Cycle();
+        }
+
         static void CopyWorldLink()
         {
             var world = WorldTravel.Instance != null ? WorldTravel.Instance.Current : null;
@@ -144,10 +175,9 @@ namespace Metaverso
                 scaler.referenceResolution = new Vector2(1920f, 1080f);
             }
 
-            _version = MakeText(canvas.transform, "Version", "v0.1.0", 18, TextAnchor.LowerRight, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-16f, 12f), new Vector2(420f, 32f));
+            _version = MakeText(canvas.transform, "Version", "v0.1.0", 18, TextAnchor.LowerRight, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-16f, 12f), new Vector2(560f, 32f));
             var info = Resources.Load<BuildInfo>("BuildInfo");
-            if (info != null)
-                _version.text = info.Label;
+            _buildLabel = info != null ? info.Label : _version.text;
 
             _checklist = MakeText(canvas.transform, "Checklist", "", 20, TextAnchor.UpperLeft, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -16f), new Vector2(520f, 280f));
 
@@ -160,6 +190,14 @@ namespace Metaverso
                 copy.anchorMax = new Vector2(1f, 1f);
                 copy.pivot = new Vector2(1f, 1f);
                 copy.anchoredPosition = new Vector2(-16f, -16f);
+
+                var quality = MakeButton(canvas.transform, "Calidad", Vector2.zero, CycleQuality);
+                quality.anchorMin = new Vector2(1f, 1f);
+                quality.anchorMax = new Vector2(1f, 1f);
+                quality.pivot = new Vector2(1f, 1f);
+                quality.anchoredPosition = new Vector2(-16f, -60f);
+                _qualityToggle = quality.gameObject;
+                _qualityLabel = quality.GetComponentInChildren<Text>();
             }
 
             _wallBar = new GameObject("WallActions");
@@ -194,6 +232,7 @@ namespace Metaverso
                 16, TextAnchor.LowerLeft, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(16f, 12f), new Vector2(760f, 88f));
             help.color = new Color(1f, 1f, 1f, 0.8f);
             RefreshChecklist();
+            RefreshQuality();
         }
 
         void RefreshChecklist()

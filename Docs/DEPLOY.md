@@ -16,6 +16,7 @@ El cliente abre una URL. No instala nada.
    - Compila `metaverso-web/docs/desktop` (texturas DXT) y `metaverso-web/docs/quest` (ASTC). Al cambiar el formato el editor recarga solo y sigue con la otra variante; no lances el menu otra vez en ese hueco.
    - Escribe `docs/index.html` (elige carpeta por user agent), `docs/version.json` y `docs/.nojekyll`.
    - Si Unity no deja cambiar el formato de textura por codigo, las dos carpetas salen con el de Player Settings. Cada una deja `texture-format.txt`.
+   - Antes de compilar reaplica los niveles de calidad (`QualityTierSetup`) y fija la API grafica por variante: `quest` siempre WebGL2; `desktop` WebGL2, o WebGPU con WebGL2 de respaldo si **Metaverso > Rendering > WebGPU en desktop (spike)** esta marcado en esta maquina. Cada carpeta deja `graphics.txt` y `version.json` trae `desktopGraphics` y `questGraphics`.
 3. `BuildSizeCheck` corta el build si el `.data` pasa de 50 MB.
 
 ## Publicar en GitHub Pages

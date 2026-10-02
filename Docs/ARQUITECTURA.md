@@ -6,7 +6,7 @@ Cada carpeta de `Assets/_Metaverso/Scripts` tiene su `.asmdef`. Asi el codigo de
 
 | Assembly | Carpeta | Depende de |
 | --- | --- | --- |
-| `Metaverso.Runtime` | Core, Player, World, UI, Network (sin Fusion) | Input System, Timeline, UGUI |
+| `Metaverso.Runtime` | Core, App, Player, World, UI, Rendering, Network (sin Fusion) | Addressables, Input System, URP, Timeline, UGUI |
 | `Metaverso.XR` | XR | Runtime, WebXR, XR Interaction Toolkit, XR Core Utils |
 | `Metaverso.Fusion` | Network/Fusion | Runtime y `Fusion.Runtime`. Solo compila con el define `PHOTON_FUSION` |
 | `Metaverso.Editor` | Editor | Runtime (solo editor) |
@@ -61,6 +61,27 @@ sequenceDiagram
 - `VrHands` agarra la pelota con el gatillo, la suelta con el grip y hace un teletransporte corto con el click del stick derecho. Existe porque las acciones de seleccion de XRI no vienen asignadas en un rig creado por codigo.
 - El rig lo arma `EditorXR/PlayerRigBuilder.cs`. Cada mano tiene un `XRDirectInteractor`; el `XRRayInteractor` va en un hijo porque Unity permite un interactor por objeto.
 
+## Calidad por niveles
+
+| Nivel | Quien entra | Asset URP / renderer | Que trae |
+| --- | --- | --- | --- |
+| Quest | Quest Browser siempre; celulares por defecto | `Web_Quest_RPAsset` / `Web_Quest_Renderer` | Sin HDR ni post-proceso, MSAA 4x, sombra principal 1024 a 20 m, sin sombras de luces extra |
+| PC | Escritorio con WebGL2 | `Web_PC_RPAsset` / `Web_PC_Renderer` | HDR, ACES + bloom (`Web_PC_Volume`), SSAO, MSAA 4x, sombras suaves 2048 a 40 m, pixel ratio hasta 1.5 |
+| Ultra | Escritorio con WebGPU (o elegido a mano) | `Web_Ultra_RPAsset` / `Web_PC_Renderer` | Lo de PC con sombras 4096 en 4 cascadas a 60 m, 8 luces por objeto, pixel ratio hasta 2 |
+
+- `Core/QualityTierRules.cs` decide el nivel (user agent, API grafica, `?quality=quest|pc|ultra`, eleccion guardada) y define los valores de cada uno. Tiene tests.
+- `Editor/QualityTierSetup.cs` escribe esos valores en los assets de `Assets/Settings` y en los niveles `Web_Quest`, `Web_PC` y `Web_Ultra` de Quality Settings. Corre en cada build web, asi que **los cambios a mano en esos assets se pisan**: se cambia `QualityTierRules.Profile`. El look (tonemapping, bloom) vive en `Web_PC_Volume` y no se pisa.
+- `Rendering/QualityTierController.cs` (en `Systems` de Boot; `Bootstrap` lo agrega si falta) cambia el nivel de Quality Settings, prende o apaga post-proceso por camara y limita `devicePixelRatio` del canvas (`Plugins/WebGL/QualityTier.jslib`).
+- El HUD muestra el nivel junto a la version (`v0.1.12 | ... | PC WebGL2`) y en PC tiene el boton **Calidad** para cambiarlo en vivo. Quest no tiene selector.
+
+### WebGPU (spike)
+
+- WebXR Export solo funciona con WebGL2: el build `quest` nunca lleva WebGPU.
+- Con **Metaverso > Rendering > WebGPU en desktop (spike)** marcado, `desktop` sale con WebGPU primero y WebGL2 de respaldo. El loader de Unity usa WebGL2 si el navegador no tiene `navigator.gpu` o no da adaptador.
+- `?gfx=webgl2` fuerza WebGL2 (oculta `navigator.gpu` antes del loader, en la plantilla `WebXRFullView2020`). Si WebGPU falla al iniciar, la plantilla recarga sola con `?gfx=webgl2`.
+- `Plugins/WebGL/WebXRGraphicsGuard.jspre`: sin contexto WebGL (WebGPU), WebXR no se inicializa y el boton VR queda apagado, en lugar de tirar una excepcion que tumba el player.
+- Si el spike no queda estable en 6.3, Ultra sigue disponible como "PC alto" sobre WebGL2 desde el boton **Calidad** o con `?quality=ultra`.
+
 ## Red
 
 - `NetworkBootstrap` deja una `OfflineSession` con la sala de `?room=`.
@@ -84,3 +105,5 @@ sequenceDiagram
 | Cambiar el presupuesto Quest | `Core/QuestBudget.cs` |
 | Cambiar que se aplica al importar modelos | `Editor/ArchModelPostprocessor.cs` y `Editor/ArchModelMenu.cs` |
 | Agregar un paso al build | `Editor/WebBuildPipeline.cs` |
+| Cambiar sombras, MSAA, HDR o pixel ratio de un nivel | `Core/QualityTierRules.cs` (`Profile`) |
+| Cambiar el look de PC y Ultra (tonemapping, bloom) | `Assets/Settings/Web_PC_Volume.asset` |

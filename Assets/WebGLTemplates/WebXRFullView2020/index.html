@@ -29,6 +29,12 @@
       </div>
     </div>
     <script>
+      // ?gfx=webgl2 oculta WebGPU al loader de Unity y fuerza WebGL2 (y con eso, VR).
+      var query = new URLSearchParams(location.search);
+      if (query.get("gfx") === "webgl2" && navigator.gpu) {
+        try { Object.defineProperty(navigator, "gpu", { value: undefined, configurable: true }); } catch (e) {}
+      }
+
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
       var config = {
@@ -76,6 +82,12 @@
             };
           }
         }).catch((message) => {
+          if (window.metaversoWebGpu && navigator.gpu && query.get("gfx") !== "webgl2") {
+            console.warn("[Metaverso] WebGPU fallo al iniciar, reintento con WebGL2:", message);
+            query.set("gfx", "webgl2");
+            location.replace(location.pathname + "?" + query.toString() + location.hash);
+            return;
+          }
           alert(message);
         });
       };

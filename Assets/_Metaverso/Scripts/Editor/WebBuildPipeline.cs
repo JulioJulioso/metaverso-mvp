@@ -102,6 +102,12 @@ namespace Metaverso.EditorTools
             {
                 case BuildStep.PrepareDesktop:
                     ApplyWebSettings();
+                    if (!QualityTierSetup.Apply())
+                    {
+                        Fail("No se pudieron preparar los niveles de calidad. Revisa la consola.");
+                        return;
+                    }
+
                     if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.WebGL
                         && !EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.WebGL, BuildTarget.WebGL))
                     {
@@ -196,6 +202,7 @@ namespace Metaverso.EditorTools
                 return false;
             }
 
+            var graphics = QualityTierSetup.PrepareVariant(folder == "quest");
             var options = new BuildPlayerOptions
             {
                 scenes = new[] { WorldPaths.BootScene },
@@ -216,8 +223,10 @@ namespace Metaverso.EditorTools
             }
 
             WorldAddressables.CopyContent(Path.Combine(output, WorldContent.BundleFolder));
-            PatchIndex(Path.Combine(output, "index.html"), info);
+            PatchIndex(Path.Combine(output, "index.html"), info, graphics.Contains("webgpu"));
             File.WriteAllText(Path.Combine(output, "texture-format.txt"), textureFormat + "\n");
+            File.WriteAllText(Path.Combine(output, "graphics.txt"), graphics + "\n");
+            Debug.Log($"[Metaverso] {folder}: {textureFormat}, graficos {graphics}.");
             return true;
         }
 
@@ -337,11 +346,19 @@ namespace Metaverso.EditorTools
             return null;
         }
 
-        static void PatchIndex(string indexPath, BuildInfo info)
+        static void PatchIndex(string indexPath, BuildInfo info, bool webGpu)
         {
             if (!File.Exists(indexPath))
                 return;
             var html = File.ReadAllText(indexPath);
+            // La plantilla solo reintenta con ?gfx=webgl2 si este build trae WebGPU.
+            if (webGpu && !html.Contains("metaverso-gfx"))
+            {
+                const string gfx = "<script id=\"metaverso-gfx\">window.metaversoWebGpu=true;</script>";
+                var head = html.IndexOf("<head>", StringComparison.OrdinalIgnoreCase);
+                html = head >= 0 ? html.Insert(head + "<head>".Length, gfx) : gfx + html;
+            }
+
             // Un link copiado de la barra (.../desktop/?world=x) abierto en el otro visor salta a su build.
             const string variant = "<script id=\"metaverso-variant\">(function(){var q=/Quest|OculusBrowser/i.test(navigator.userAgent);var from=q?\"/desktop/\":\"/quest/\";var to=q?\"/quest/\":\"/desktop/\";var p=location.pathname;if(p.indexOf(from)>=0){location.replace(p.replace(from,to)+location.search+location.hash);}})();</script>";
             if (!html.Contains("metaverso-variant"))
@@ -358,8 +375,10 @@ namespace Metaverso.EditorTools
 
         public static void WriteShell(string docs, BuildInfo info)
         {
+            var desktopGraphics = QualityTierSetup.GraphicsLabel(QualityTierSetup.WebGpuSpikeEnabled);
             File.WriteAllText(Path.Combine(docs, "version.json"),
-                "{\"version\":\"" + info.version + "\",\"builtAt\":\"" + info.builtAt + "\",\"label\":\"" + info.Label + "\"}\n");
+                "{\"version\":\"" + info.version + "\",\"builtAt\":\"" + info.builtAt + "\",\"label\":\"" + info.Label
+                + "\",\"desktopGraphics\":\"" + desktopGraphics + "\",\"questGraphics\":\"webgl2\"}\n");
             File.WriteAllText(Path.Combine(docs, ".nojekyll"), "");
             File.WriteAllText(Path.Combine(docs, "index.html"), ShellHtml());
             var catalog = Path.GetFullPath(WorldPaths.CatalogAsset);

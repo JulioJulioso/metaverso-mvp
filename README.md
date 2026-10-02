@@ -33,7 +33,9 @@ Motor: **Unity 6000.3.9f1**, URP, plataforma Web (WebGL) con [WebXR Export](http
 | Crear mundo de prueba | Regenera `Circuito.unity` (circuito del MVP + rig VR) |
 | Crear rig VR | Rehace solo el XR Origin en la escena abierta |
 | Configurar proyecto Web | Reaplica Player Settings (Brotli, hashes, cache, stripping) |
-| Configurar WebXR | Copia plantillas WebXR y activa el loader para Web |
+| Configurar WebXR | Copia las plantillas WebXR que falten y activa el loader para Web |
+| Rendering > Configurar niveles de calidad | Crea o reaplica los niveles Quest / PC / Ultra (tambien corre en cada build) |
+| Rendering > WebGPU en desktop (spike) | Marca de esta maquina: el build desktop sale con WebGPU y WebGL2 de respaldo |
 | Preparar modelo arquitectonico | Colliders, estaticos, capa Architecture y reporte de presupuesto Quest |
 | Build Web (desktop + Quest) | Sube la version y deja el sitio en `metaverso-web/docs` |
 | Red > Activar Photon Fusion | Enciende el multiplayer cuando el SDK ya esta importado |
@@ -46,15 +48,16 @@ Assets/_Metaverso/
   Scripts/Player      Controlador de PC y camara en tercera persona
   Scripts/World       Circuito de prueba: monedas, pelota, zonas, muros, pantalla, fichas BIM
   Scripts/UI          HUD (pantalla en PC, mundo en VR)
+  Scripts/Rendering   QualityTierController: nivel de calidad Quest / PC / Ultra
   Scripts/XR          Cambio PC/VR y locomocion del Quest (depende de WebXR y XRI)
   Scripts/Network     Sesion local; Fusion/ se compila solo con PHOTON_FUSION
   Scripts/Editor      Menus, importador de modelos, build web, chequeo de tamano
   Scripts/EditorXR    Configuracion WebXR y constructor del rig VR
-  Plugins/WebGL       jslib del overlay de video
+  Plugins/WebGL       jslib de URL, overlay de video y calidad; guard de WebXR para WebGPU
   Models/Arch         Aqui van los FBX / GLB de Revit y Rhino
   Scenes              Circuito.unity y su Timeline
   Tests               EditMode y PlayMode
-Assets/Settings       URP: Web_RPAsset es el de la plataforma Web
+Assets/Settings       URP web: Web_Quest_*, Web_PC_*, Web_Ultra_RPAsset y Web_PC_Volume (los genera QualityTierSetup)
 Assets/WebGLTemplates Plantillas de WebXR Export (se usa WebXRFullView2020)
 Docs/                 Documentacion (ver abajo)
 Tools/qa/             Chequeos del sitio publicado (Node + Playwright)

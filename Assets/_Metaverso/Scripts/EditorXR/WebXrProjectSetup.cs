@@ -39,7 +39,7 @@ namespace Metaverso.EditorXR
             CopyTemplates();
             PlayerSettings.WebGL.template = "PROJECT:WebXRFullView2020";
             EnableLoader();
-            Debug.Log("[Metaverso] WebXR: plantillas copiadas, template WebXRFullView2020, loader pedido para WebGL.");
+            Debug.Log("[Metaverso] WebXR: plantillas que faltaban copiadas, template WebXRFullView2020, loader pedido para WebGL.");
         }
 
         public static void CopyTemplates()
@@ -86,8 +86,13 @@ namespace Metaverso.EditorXR
             if (!directory.Exists)
                 return;
             Directory.CreateDirectory(destFolderName);
+            // WebXRFullView2020/index.html tiene cambios del proyecto (respaldo WebGPU a WebGL2).
             foreach (var file in directory.GetFiles())
-                file.CopyTo(Path.Combine(destFolderName, file.Name), true);
+            {
+                var target = Path.Combine(destFolderName, file.Name);
+                if (!File.Exists(target))
+                    file.CopyTo(target);
+            }
 
             foreach (var sub in directory.GetDirectories())
                 CopyFolder(sub.FullName, Path.Combine(destFolderName, sub.Name));
